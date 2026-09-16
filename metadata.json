@@ -1,0 +1,6 @@
+{
+  "name": "StockPulse",
+  "description": "Enterprise Financial Intelligence & Autonomous AI QA Platform featuring multi-market tracking, fundamentals research, 7 ergonomic themes, AI Financial Copilot, and 3-tier Playwright + MCP testing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
