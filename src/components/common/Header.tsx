@@ -43,6 +43,8 @@ export const Header: React.FC<HeaderProps> = ({
   setThemeId,
   isStreaming,
   setIsStreaming,
+  streamSpeed,
+  setStreamSpeed,
   lastTickInfo,
   onRefreshManual,
 }) => {
@@ -116,6 +118,21 @@ export const Header: React.FC<HeaderProps> = ({
               {isStreaming ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
               <span className="hidden md:inline">{isStreaming ? 'Live' : 'Paused'}</span>
             </button>
+
+            {isStreaming && (
+              <select
+                id="stream-speed-select"
+                aria-label="Streaming Tick Rate"
+                value={streamSpeed}
+                onChange={(e) => setStreamSpeed(Number(e.target.value))}
+                className="bg-transparent text-[11px] font-mono outline-none border-0 cursor-pointer pr-1"
+                style={{ color: currentTheme.textSecondary }}
+              >
+                <option value={1000} className="bg-slate-900 text-white">1s</option>
+                <option value={3000} className="bg-slate-900 text-white">3s</option>
+                <option value={5000} className="bg-slate-900 text-white">5s</option>
+              </select>
+            )}
 
             {lastTickInfo && (
               <span
