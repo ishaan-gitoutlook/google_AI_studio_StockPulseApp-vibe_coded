@@ -1,18 +1,19 @@
-"""
-Backward-compatibility shim for backend.models.
-Re-exports canonical schemas from backend.schemas.
-"""
-
-from backend.schemas import (
+from backend.schemas.market import (
     StockQuote,
     MarketBreadth,
     UniverseMeta,
     QuotesResponse,
+)
+from backend.schemas.analytics import (
     ValuationMultiples,
     Financials,
     StabilityScore,
     AnalystTargets,
     StockFundamentals,
+    MonteCarloResponse,
+    IndicatorsResponse,
+)
+from backend.schemas.response import (
     HealthResponse,
     ChatRequest,
     ChatResponse,
@@ -29,6 +30,8 @@ __all__ = [
     "StabilityScore",
     "AnalystTargets",
     "StockFundamentals",
+    "MonteCarloResponse",
+    "IndicatorsResponse",
     "HealthResponse",
     "ChatRequest",
     "ChatResponse",

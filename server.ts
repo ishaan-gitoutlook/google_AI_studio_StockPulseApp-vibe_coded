@@ -11,6 +11,7 @@ import { createServer as createViteServer } from 'vite';
 import { INITIAL_STOCKS, STOCK_FUNDAMENTALS, UNIVERSES_META } from './src/data/universes.ts';
 import { calculateBreadth, getOrCreateStockFundamentals } from './src/utils/marketEngine.ts';
 import { CAPSTONE_SCENARIOS, PLAYWRIGHT_SPECS, UNIT_TESTS_DATA } from './src/data/qaSuite.ts';
+import { StockFundamentals } from './src/types/index.ts';
 
 dotenv.config();
 
@@ -115,7 +116,7 @@ function getGeminiClient(): GoogleGenAI | null {
 }
 
 // In-memory high-frequency research cache (LRU-style map)
-const researchCache = new Map<string, any>();
+const researchCache = new Map<string, StockFundamentals>();
 
 // -------------------------------------------------------------
 // PYTHON BACKEND DELEGATION (Python-First Architecture)
@@ -615,7 +616,7 @@ app.get('/api/v1/tests/scenarios', (req: Request, res: Response) => {
 // -------------------------------------------------------------
 // CENTRALIZED ERROR HANDLER (Information Leakage Prevention)
 // -------------------------------------------------------------
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+app.use((err: Error & { status?: number }, req: Request, res: Response, next: NextFunction) => {
   console.error('[StockPulse Security Shield - Intercepted Error]:', err?.message || err);
   if (res.headersSent) {
     return next(err);

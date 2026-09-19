@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { MarketBreadth, MarketUniverseId, StockQuote, ThemeId } from './types';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { MarketUniverseId, StockQuote, ThemeId } from './types';
 import { applyThemeToDocument, getStoredTheme, saveTheme, THEMES } from './utils/theme';
 import { INITIAL_STOCKS } from './data/universes';
 import { calculateBreadth, simulateTickUpdate } from './utils/marketEngine';
-import { Header } from './components/Header';
-import { BreadcrumbNav } from './components/BreadcrumbNav';
+import { Header, BreadcrumbNav } from './components/common';
 import { MarketTracker } from './components/MarketTracker/MarketTracker';
 import { FundamentalsView } from './components/Fundamentals/FundamentalsView';
 import { AICopilot } from './components/AICopilot/AICopilot';
 import { QAStudio } from './components/QAStudio/QAStudio';
 import { ApiExplorer } from './components/ApiExplorer/ApiExplorer';
 import { DocViewer } from './components/DocViewer/DocViewer';
+import { usePageVisibility } from './hooks/usePageVisibility';
 
 export function App() {
   // Theme state
@@ -46,19 +46,10 @@ export function App() {
 
   // Live tick streaming controls & Page Visibility optimization
   const [isStreaming, setIsStreaming] = useState(true);
-  const [isTabVisible, setIsTabVisible] = useState(() => (typeof document !== 'undefined' ? !document.hidden : true));
+  const isTabVisible = usePageVisibility();
   const [streamSpeed, setStreamSpeed] = useState(3000); // 3 seconds default
   const [lastTickInfo, setLastTickInfo] = useState<{ symbol: string; isGain: boolean; time: string } | null>(null);
   const [flashingSymbols, setFlashingSymbols] = useState<Record<string, 'gain' | 'loss'>>({});
-
-  // Page Visibility API: pause background ticking to preserve battery and CPU
-  useEffect(() => {
-    const handleVisibility = () => {
-      setIsTabVisible(!document.hidden);
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, []);
 
   // Theme application on mount & change
   useEffect(() => {

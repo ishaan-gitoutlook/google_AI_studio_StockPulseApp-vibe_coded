@@ -190,21 +190,28 @@ Track blue-chip indices across 7 global benchmarks:
 
 ```
 google_AI_studio_StockPulseApp-vibe_coded/
-├── backend/                           # Core Python FastAPI Engine
-│   ├── analytics.py                   # Monte Carlo (1,000 runs), VaR, Altman Z-Score
-│   ├── copilot.py                     # Python Gemini 2.5 Copilot + Search Grounding
-│   ├── data.py                        # Universes and quote catalogs
-│   ├── engine.py                      # GBM tick simulator & breadth calculations
-│   ├── indicators.py                  # Pure Python RSI, MACD, Bollinger Bands
-│   ├── main.py                        # FastAPI REST application (Port 8000)
-│   └── models.py                      # Pydantic v2 domain schemas
+├── backend/                           # Core Python FastAPI Engine (Clean Architecture)
+│   ├── api/                           # Modular FastAPI routers (health, quotes, research, analytics, chat, tests)
+│   ├── core/                          # Settings config (pydantic-settings) & structured logging
+│   ├── schemas/                       # Pydantic v2 domain schemas (market, analytics, responses)
+│   ├── services/                      # Domain service layer (quant indicators, GBM, Monte Carlo, copilot)
+│   ├── data.py                        # Universes & quote catalogs
+│   ├── main.py                        # FastAPI application & router assembly with lifespan context
+│   └── [analytics,copilot,engine...].py # Backward-compatible re-export shims
 ├── src/                               # Frontend React 19 Application
-│   ├── components/                    # Modular UI components (Tracker, D3 Treemap, etc.)
-│   ├── lib/                           # Firebase initialization & utilities
+│   ├── components/
+│   │   ├── common/                    # Reusable components (Header, BreadcrumbNav, AuthModal)
+│   │   ├── MarketTracker/             # Quotes matrix, D3 treemap, breadth chart
+│   │   ├── Fundamentals/              # Deep-dive valuation ratios & DuPont analysis
+│   │   ├── AICopilot/                 # Grounded Gemini Copilot interface
+│   │   ├── QAStudio/                  # 3-tier testing studio
+│   │   └── ApiExplorer/               # Interactive REST endpoint tester
+│   ├── hooks/                         # Custom React hooks (usePageVisibility)
+│   ├── services/                      # Type-safe client API layer (apiClient, marketService)
 │   ├── App.tsx                        # Main application container & state
 │   ├── index.css                      # TailwindCSS v4 and 7 ergonomic themes
 │   └── main.tsx                       # React DOM entrypoint
-├── tests/                             # Comprehensive test suites
+├── tests/                             # Comprehensive test suites (21/21 Passing)
 │   ├── test_analytics.py              # Monte Carlo & solvency tests
 │   ├── test_backend.py                # FastAPI endpoint tests
 │   └── test_indicators.py             # RSI, MACD, Bollinger Bands unit tests

@@ -16,6 +16,7 @@ import {
   Search,
 } from 'lucide-react';
 import { MarketUniverseId, StockQuote, ThemeConfig, GroundingSource } from '../../types';
+import { marketService } from '../../services/marketService';
 
 interface Message {
   id: string;
@@ -104,17 +105,7 @@ I am your institutional financial intelligence partner and autonomous testing as
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/v1/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: query,
-          universe: activeUniverse,
-          activeStock: selectedStock,
-        }),
-      });
-
-      const data = await response.json();
+      const data = await marketService.sendChatMessage(query, activeUniverse, selectedStock);
       const botMessage: Message = {
         id: `copilot-${Date.now()}`,
         sender: 'copilot',

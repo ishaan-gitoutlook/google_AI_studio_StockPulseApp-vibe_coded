@@ -79,41 +79,42 @@ graph TD
 
 ## 🐍 The Python Engine Ecosystem (`backend/`)
 
-### Quantitative Technical Indicators Engine (`backend/indicators.py`)
-Pure Python implementations of standard financial algorithms:
-* **Relative Strength Index (RSI)**: 14-period Wilder smoothed averages calculating overbought (`>=70`) and oversold (`<=30`) momentum states.
-* **Moving Average Convergence Divergence (MACD)**: 12-period and 26-period Exponential Moving Averages (EMA) with a 9-period Signal Line and momentum histogram.
-* **Bollinger Bands**: 20-period Simple Moving Average with Upper and Lower $2\sigma$ standard deviation bands, bandwidth percentage, and $\%B$ position indicator.
-* **Simple & Exponential Moving Averages (SMA/EMA)**: 20-period and 50-period trend-following indicators.
-* **Composite Technical Scoring**: Multi-factor scoring (0-100) determining `STRONG_BUY`, `BUY`, `NEUTRAL`, or `SELL` recommendations.
+StockPulse's backend follows industry-standard **Clean Architecture** with strict Separation of Concerns:
 
-### Monte Carlo Risk & Solvency Engine (`backend/analytics.py`)
-* **Geometric Brownian Motion (GBM) Simulation**:
-  $$dS_t = \mu S_t dt + \sigma S_t dW_t$$
-  Executes 1,000 price path iterations across 30, 90, and 252-day horizons.
-* **Value-at-Risk (VaR)**: Calculates maximum statistical dollar and percentage loss at **95%** and **99%** confidence levels.
-* **Expected Shortfall (Conditional VaR / CVaR)**: Calculates average loss in extreme 95th percentile tail-risk events.
-* **Altman Z-Score**: Evaluates balance sheet solvency and bankruptcy probability across 5 operational financial ratios:
-  $$Z = 1.2X_1 + 1.4X_2 + 3.3X_3 + 0.6X_4 + 0.999X_5$$
-  Categorizes assets into **Safe Zone** ($Z \ge 2.99$), **Grey Zone** ($1.81 \le Z < 2.99$), and **Distress Zone** ($Z < 1.81$).
-* **DuPont 3-Way ROE Decomposition**: Breaks down Return on Equity into Net Profit Margin $\times$ Asset Turnover $\times$ Financial Leverage.
+* **`backend/core/`**: Centralized configuration management using `pydantic-settings` (`Settings`) reading `.env` variables and structured terminal logging (`logging.py`).
+* **`backend/schemas/`**: Pydantic v2 domain schemas (`market.py`, `analytics.py`, `response.py`) with strict validation and camelCase/snake_case flexibility.
+* **`backend/services/`**: Domain-driven business logic isolated from HTTP transport:
+  * **Quantitative Technical Indicators (`backend/services/indicators_service.py`)**:
+    * **Relative Strength Index (RSI)**: 14-period Wilder smoothed averages calculating overbought (`>=70`) and oversold (`<=30`) momentum states.
+    * **Moving Average Convergence Divergence (MACD)**: 12-period and 26-period Exponential Moving Averages (EMA) with a 9-period Signal Line and momentum histogram.
+    * **Bollinger Bands**: 20-period Simple Moving Average with Upper and Lower $2\sigma$ standard deviation bands, bandwidth percentage, and $\%B$ position indicator.
+    * **Simple & Exponential Moving Averages (SMA/EMA)**: 20-period and 50-period trend-following indicators.
+    * **Composite Technical Scoring**: Multi-factor scoring (0-100) determining `STRONG_BUY`, `BUY`, `NEUTRAL`, or `SELL` recommendations.
+  * **Monte Carlo Risk & Solvency Engine (`backend/services/analytics_service.py`)**:
+    * **Geometric Brownian Motion (GBM) Simulation**:
+      $$dS_t = \mu S_t dt + \sigma S_t dW_t$$
+      Executes 1,000 price path iterations across 30, 90, and 252-day horizons.
+    * **Value-at-Risk (VaR)**: Calculates maximum statistical dollar and percentage loss at **95%** and **99%** confidence levels.
+    * **Expected Shortfall (Conditional VaR / CVaR)**: Calculates average loss in extreme 95th percentile tail-risk events.
+    * **Altman Z-Score**: Evaluates balance sheet solvency and bankruptcy probability across 5 operational financial ratios:
+      $$Z = 1.2X_1 + 1.4X_2 + 3.3X_3 + 0.6X_4 + 0.999X_5$$
+      Categorizes assets into **Safe Zone** ($Z \ge 2.99$), **Grey Zone** ($1.81 \le Z < 2.99$), and **Distress Zone** ($Z < 1.81$).
+    * **DuPont 3-Way ROE Decomposition**: Breaks down Return on Equity into Net Profit Margin $\times$ Asset Turnover $\times$ Financial Leverage.
+  * **Python AI Copilot (`backend/services/copilot_service.py`)**:
+    * Direct integration with `google-genai` Python SDK utilizing **Gemini 2.5 Flash**.
+    * Enabled with real-time **Google Search Grounding** for live financial news and earnings reports.
+    * Resilient dual fallback: `gemini-2.5-flash` ➔ `gemini-2.0-flash` ➔ Python Quantitative Heuristics.
+  * **Market Ticking & Breadth (`backend/services/market_service.py`)**:
+    * Geometric Brownian Motion random walk updates and dynamic fundamentals synthesis.
+* **`backend/api/`**: Modular FastAPI APIRouters (`health.py`, `universes.py`, `quotes.py`, `research.py`, `analytics.py`, `chat.py`, `tests.py`) aggregated into an `api_router`.
+* **`backend/main.py`**: Lean ~40-line application bootstrap utilizing modern asynchronous `lifespan` context managers.
+* **Backward-Compatibility Shims**: `backend/models.py`, `backend/engine.py`, `backend/indicators.py`, `backend/analytics.py`, and `backend/copilot.py` re-export from the new modular structure, ensuring 100% test and import compatibility.
 
-### Python AI Copilot (`backend/copilot.py`)
-* Direct integration with `google-genai` Python SDK utilizing **Gemini 2.5 Flash**.
-* Enabled with real-time **Google Search Grounding** for live financial news and earnings reports.
-* Resilient dual fallback: `gemini-2.5-flash` ➔ `gemini-2.0-flash` ➔ Python Quantitative Heuristics.
+### 🌐 Frontend Clean Architecture (`src/`)
 
-### FastAPI REST Service (`backend/main.py`)
-High-performance REST API operating on port `8000`:
-* `GET /health`: Health metrics, Python 3.14 runtime, and active capabilities.
-* `GET /api/v1/universes`: Global listings across 7 market universes.
-* `GET /api/v1/quotes`: Real-time quote streaming and market breadth.
-* `GET /api/v1/research`: Fundamental financial ratios and stability scores.
-* `GET /api/v1/analytics/indicators`: Technical indicator analysis.
-* `GET /api/v1/analytics/monte-carlo`: 1,000-run Monte Carlo risk simulations.
-* `GET /api/v1/analytics/solvency`: Altman Z-Score and DuPont analysis.
-* `POST /api/v1/chat`: Gemini Copilot with market context.
-* `GET /api/v1/tests/unit`: Live, programmatic execution of pytest.
+* **`src/services/`**: Abstracted API client layer (`apiClient.ts`) with custom error classes and typed service methods (`marketService.ts`), eliminating ad-hoc `fetch()` calls.
+* **`src/hooks/`**: Custom hooks (`usePageVisibility.ts`) decoupling window and document event listeners from UI views.
+* **`src/components/common/`**: Shared navigation and authentication components (`Header.tsx`, `BreadcrumbNav.tsx`, `AuthModal.tsx`).
 
 ---
 
