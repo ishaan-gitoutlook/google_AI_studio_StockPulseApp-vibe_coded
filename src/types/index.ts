@@ -124,6 +124,11 @@ export interface MarketBreadth {
   topLoser: StockQuote;
 }
 
+export interface GroundingSource {
+  title?: string;
+  uri?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -131,11 +136,42 @@ export interface ChatMessage {
   timestamp: string;
   modelUsed?: string;
   contextSymbols?: string[];
+  groundingSources?: GroundingSource[];
   metrics?: {
     latencyMs?: number;
     tokens?: number;
   };
   guardrailPassed?: boolean;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  displayName?: string;
+  photoURL?: string;
+  watchlist: string[];
+  favoriteUniverse?: string;
+  customPriceAlerts?: Array<{
+    id: string;
+    symbol: string;
+    targetPrice: number;
+    condition: 'above' | 'below';
+    createdAt: string;
+  }>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface StockResearchNote {
+  id: string;
+  userId: string;
+  symbol: string;
+  companyName: string;
+  noteText: string;
+  rating?: 'STRONG_BUY' | 'BUY' | 'HOLD' | 'SELL' | 'STRONG_SELL';
+  targetPrice?: number;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface QAScenario {
@@ -182,3 +218,15 @@ export interface PlaywrightTestSpec {
     codeSnippet: string;
   }>;
 }
+
+export type TrackerWidgetId = 'breadth_radar' | 'd3_distribution' | 'sector_treemap' | 'detail_chart' | 'quotes_matrix';
+
+export interface TrackerWidgetConfig {
+  id: TrackerWidgetId;
+  title: string;
+  description: string;
+  colSpan: 'full' | 'half' | 'two-thirds' | 'one-third';
+  minHeight?: string;
+  isCollapsed?: boolean;
+}
+

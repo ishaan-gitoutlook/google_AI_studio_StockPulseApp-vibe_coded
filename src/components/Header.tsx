@@ -15,10 +15,14 @@ import {
   Search,
   Sparkles,
   RefreshCw,
+  User,
+  LogIn,
 } from 'lucide-react';
 import { MarketUniverseId, ThemeConfig, ThemeId } from '../types';
 import { THEMES } from '../utils/theme';
 import { UNIVERSES_META } from '../data/universes';
+import { useAuth } from '../context/AuthContext';
+import { AuthModal } from './AuthModal';
 
 interface HeaderProps {
   activeTab: 'tracker' | 'fundamentals' | 'copilot' | 'qa' | 'api' | 'docs';
@@ -50,6 +54,8 @@ export const Header: React.FC<HeaderProps> = ({
   onRefreshManual,
 }) => {
   const [isThemeOpen, setIsThemeOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const { user, userProfile } = useAuth();
 
   return (
     <header
@@ -61,50 +67,44 @@ export const Header: React.FC<HeaderProps> = ({
         color: currentTheme.textPrimary,
       }}
     >
-      {/* Top Banner with Ticker Pulse & Status */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
-        {/* Brand Logo & Live Pulse */}
+      {/* Top Banner: Brand Logo & Global Controls */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4">
+        {/* Brand Logo & Minimalist Live Indicator */}
         <div className="flex items-center gap-3">
           <div
             id="brand-logo-container"
-            className="flex items-center justify-center w-10 h-10 rounded-xl shadow-sm transition-transform hover:scale-105"
+            className="flex items-center justify-center w-8 h-8 rounded-lg shadow-xs transition-transform"
             style={{
               backgroundColor: `${currentTheme.accent}20`,
               border: `1px solid ${currentTheme.accent}40`,
             }}
           >
-            <Activity className="w-5 h-5 animate-pulse" style={{ color: currentTheme.accent }} />
+            <Activity className="w-4 h-4" style={{ color: currentTheme.accent }} />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 id="app-title-heading" className="text-xl font-extrabold tracking-tight">
-                Stock<span style={{ color: currentTheme.accent }}>Pulse</span>
-              </h1>
-              <span
-                id="system-operational-badge"
-                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold tracking-wide"
-                style={{
-                  backgroundColor: `${currentTheme.gainColor}20`,
-                  color: currentTheme.gainColor,
-                  border: `1px solid ${currentTheme.gainColor}40`,
-                }}
-              >
-                <span className="w-1.5 h-1.5 rounded-full animate-ping" style={{ backgroundColor: currentTheme.gainColor }} />
-                System Operational • Core API v1.2
-              </span>
+          <div className="flex items-center gap-2.5">
+            <h1 id="app-title-heading" className="text-lg font-bold tracking-tight">
+              Stock<span style={{ color: currentTheme.accent }}>Pulse</span>
+            </h1>
+            <div
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-mono font-medium border"
+              style={{
+                backgroundColor: `${currentTheme.gainColor}15`,
+                borderColor: `${currentTheme.gainColor}35`,
+                color: currentTheme.gainColor,
+              }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: currentTheme.gainColor }} />
+              <span>Live Market</span>
             </div>
-            <p className="text-xs hidden sm:block" style={{ color: currentTheme.textMuted }}>
-              Enterprise Financial Intelligence & AI QA Automation Matrix
-            </p>
           </div>
         </div>
 
-        {/* Live Stream Controller & Quick Controls */}
-        <div className="flex items-center flex-wrap gap-2">
-          {/* Tick Streaming Pill */}
+        {/* Global Action Controls */}
+        <div className="flex items-center gap-2">
+          {/* Compact Stream Controller */}
           <div
             id="streaming-controls-panel"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono border shadow-xs"
+            className="flex items-center gap-1 p-1 rounded-lg text-xs font-mono border"
             style={{
               backgroundColor: currentTheme.cardBg,
               borderColor: currentTheme.cardBorder,
@@ -113,37 +113,22 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               id="toggle-live-stream-btn"
               onClick={() => setIsStreaming(!isStreaming)}
-              className="flex items-center gap-1 px-2 py-1 rounded font-semibold transition-all"
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all"
               style={{
-                backgroundColor: isStreaming ? `${currentTheme.gainColor}25` : `${currentTheme.textMuted}20`,
+                backgroundColor: isStreaming ? `${currentTheme.gainColor}20` : 'transparent',
                 color: isStreaming ? currentTheme.gainColor : currentTheme.textSecondary,
               }}
-              title={isStreaming ? 'Pause live market tick simulator' : 'Resume live market tick stream'}
+              title={isStreaming ? 'Click to pause stream' : 'Click to resume stream'}
             >
-              {isStreaming ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-              <span>{isStreaming ? 'STREAMING' : 'PAUSED'}</span>
+              {isStreaming ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+              <span className="hidden md:inline">{isStreaming ? 'Live' : 'Paused'}</span>
             </button>
-
-            {isStreaming && (
-              <select
-                id="stream-speed-select"
-                value={streamSpeed}
-                onChange={(e) => setStreamSpeed(Number(e.target.value))}
-                className="bg-transparent text-xs font-mono outline-none border-0 cursor-pointer pr-1"
-                style={{ color: currentTheme.textSecondary }}
-              >
-                <option value={1000} className="bg-slate-900 text-white">1s High Freq</option>
-                <option value={3000} className="bg-slate-900 text-white">3s Standard</option>
-                <option value={5000} className="bg-slate-900 text-white">5s Low Freq</option>
-              </select>
-            )}
 
             {lastTickInfo && (
               <span
                 id="last-tick-indicator"
-                className="hidden md:inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold animate-fade-in"
+                className="hidden lg:inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-mono font-medium"
                 style={{
-                  backgroundColor: lastTickInfo.isGain ? `${currentTheme.gainColor}20` : `${currentTheme.lossColor}20`,
                   color: lastTickInfo.isGain ? currentTheme.gainColor : currentTheme.lossColor,
                 }}
               >
@@ -157,7 +142,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="p-1 rounded hover:bg-white/10 transition-colors"
               title="Manual Market Refresh"
             >
-              <RefreshCw className="w-3.5 h-3.5" style={{ color: currentTheme.textSecondary }} />
+              <RefreshCw className="w-3 h-3" style={{ color: currentTheme.textSecondary }} />
             </button>
           </div>
 
@@ -168,16 +153,16 @@ export const Header: React.FC<HeaderProps> = ({
               aria-label="Market Universe"
               value={activeUniverse}
               onChange={(e) => setActiveUniverse(e.target.value as MarketUniverseId)}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold border outline-none cursor-pointer shadow-xs transition-all"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-medium border outline-none cursor-pointer shadow-xs transition-all"
               style={{
                 backgroundColor: currentTheme.cardBg,
-                borderColor: currentTheme.accent,
+                borderColor: currentTheme.cardBorder,
                 color: currentTheme.textPrimary,
               }}
             >
               {Object.values(UNIVERSES_META).map((meta) => (
                 <option key={meta.id} value={meta.id} className="bg-slate-900 text-white">
-                  {meta.flag} {meta.name} ({meta.constituentCount})
+                  {meta.flag} {meta.name}
                 </option>
               ))}
             </select>
@@ -245,8 +230,51 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             )}
           </div>
+
+          {/* Firebase Auth & Google Sign-In Profile Button */}
+          <button
+            id="firebase-auth-btn"
+            onClick={() => setIsAuthModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border shadow-xs transition-all hover:scale-102"
+            style={{
+              backgroundColor: user ? `${currentTheme.accent}20` : currentTheme.cardBg,
+              borderColor: user ? currentTheme.accent : currentTheme.cardBorder,
+              color: user ? currentTheme.accent : currentTheme.textPrimary,
+            }}
+            title={user ? `Signed in as ${user.email}` : 'Sign in with Google (Firebase)'}
+          >
+            {user ? (
+              <>
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt="avatar"
+                    referrerPolicy="no-referrer"
+                    className="w-4 h-4 rounded-full border border-white/20"
+                  />
+                ) : (
+                  <User className="w-3.5 h-3.5" />
+                )}
+                <span className="max-w-[90px] truncate">{user.displayName?.split(' ')[0] || 'Account'}</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              </>
+            ) : (
+              <>
+                <LogIn className="w-3.5 h-3.5 text-sky-400" />
+                <span className="hidden sm:inline">Google Sign-In</span>
+                <span className="sm:hidden">Login</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
+
+      {/* Auth & Firestore Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        currentTheme={currentTheme}
+      />
 
       {/* Main Navigation Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -306,10 +334,7 @@ export const Header: React.FC<HeaderProps> = ({
             }}
           >
             <Bot className="w-4 h-4" />
-            <span className="flex items-center gap-1">
-              AI Copilot
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-sky-500/20 text-sky-400 font-mono">Gemini</span>
-            </span>
+            <span>AI Copilot</span>
           </button>
 
           <button

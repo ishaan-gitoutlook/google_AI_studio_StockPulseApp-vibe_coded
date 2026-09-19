@@ -14,9 +14,14 @@ import {
   DollarSign,
   PieChart,
   Percent,
+  Bookmark,
+  FileText,
+  Save,
+  CheckCircle2,
 } from 'lucide-react';
 import { StockFundamentals, StockQuote, ThemeConfig } from '../../types';
 import { getOrCreateStockFundamentals } from '../../utils/marketEngine';
+import { useAuth } from '../../context/AuthContext';
 
 interface FundamentalsViewProps {
   stocks: StockQuote[];
@@ -32,10 +37,41 @@ export const FundamentalsView: React.FC<FundamentalsViewProps> = ({
   onAskCopilot,
 }) => {
   const [selectedSymbol, setSelectedSymbol] = useState<string>(initialSymbol);
+  const { user, userProfile, toggleWatchlist, addResearchNote } = useAuth();
+
+  const [noteText, setNoteText] = useState('');
+  const [rating, setRating] = useState<'STRONG_BUY' | 'BUY' | 'HOLD' | 'SELL' | 'STRONG_SELL'>('BUY');
+  const [customTarget, setCustomTarget] = useState<number | ''>('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const activeQuote = useMemo(() => {
     return stocks.find((s) => s.symbol === selectedSymbol) || stocks[0];
   }, [stocks, selectedSymbol]);
+
+  const isStarred = userProfile?.watchlist?.includes(selectedSymbol.toUpperCase()) || false;
+
+  const handleSaveThesis = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!noteText.trim() || !user) return;
+    setIsSavingNote(true);
+    try {
+      await addResearchNote({
+        symbol: selectedSymbol,
+        companyName: activeQuote?.name || selectedSymbol,
+        noteText: noteText.trim(),
+        rating,
+        targetPrice: customTarget ? Number(customTarget) : undefined,
+      });
+      setNoteText('');
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
 
   const fundamentals: StockFundamentals = useMemo(() => {
     if (!activeQuote) {
@@ -513,6 +549,122 @@ export const FundamentalsView: React.FC<FundamentalsViewProps> = ({
             ))}
           </ul>
         </div>
+      </div>
+
+      {/* 6. Firestore Cloud Valuation Thesis & Research Notes (Auth Required) */}
+      <div
+        className="rounded-2xl border p-5 sm:p-6 shadow-sm space-y-4"
+        style={{
+          backgroundColor: currentTheme.cardBg,
+          borderColor: currentTheme.cardBorder,
+        }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b" style={{ borderColor: currentTheme.cardBorder }}>
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl" style={{ backgroundColor: `${currentTheme.accent}20`, color: currentTheme.accent }}>
+              <FileText className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold" style={{ color: currentTheme.textPrimary }}>
+                Save Research Thesis for {selectedSymbol}
+              </h3>
+              <p className="text-xs" style={{ color: currentTheme.textMuted }}>
+                Persisted to your authenticated Firestore profile in collection <code className="font-mono text-sky-400">user_notes</code>
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => toggleWatchlist(selectedSymbol)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all"
+            style={{
+              backgroundColor: isStarred ? `${currentTheme.accent}20` : 'transparent',
+              borderColor: isStarred ? currentTheme.accent : currentTheme.cardBorder,
+              color: isStarred ? currentTheme.accent : currentTheme.textSecondary,
+            }}
+          >
+            <Bookmark className="w-3.5 h-3.5" />
+            <span>{isStarred ? 'Saved in Watchlist' : 'Add to Cloud Watchlist'}</span>
+          </button>
+        </div>
+
+        {!user ? (
+          <div className="p-4 rounded-xl border text-center space-y-2" style={{ backgroundColor: `${currentTheme.bg}60`, borderColor: currentTheme.cardBorder }}>
+            <p className="text-xs" style={{ color: currentTheme.textMuted }}>
+              🔒 Sign in with Google to write and sync personal research notes, price targets, and analyst ratings for {selectedSymbol}.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleSaveThesis} className="space-y-3">
+            <div className="flex flex-wrap gap-3">
+              <div className="flex-1 min-w-[150px]">
+                <label className="text-[11px] font-bold block mb-1" style={{ color: currentTheme.textMuted }}>
+                  Analyst Conviction Rating
+                </label>
+                <select
+                  value={rating}
+                  onChange={(e) => setRating(e.target.value as any)}
+                  className="w-full px-3 py-1.5 rounded-xl text-xs font-semibold border outline-none cursor-pointer"
+                  style={{ backgroundColor: currentTheme.bg, borderColor: currentTheme.cardBorder, color: currentTheme.textPrimary }}
+                >
+                  <option value="STRONG_BUY">🟢 Strong Buy</option>
+                  <option value="BUY">🟢 Buy</option>
+                  <option value="HOLD">⚪ Hold</option>
+                  <option value="SELL">🔴 Sell</option>
+                  <option value="STRONG_SELL">🔴 Strong Sell</option>
+                </select>
+              </div>
+
+              <div className="w-36">
+                <label className="text-[11px] font-bold block mb-1" style={{ color: currentTheme.textMuted }}>
+                  Price Target ($)
+                </label>
+                <input
+                  type="number"
+                  placeholder="e.g. 175"
+                  value={customTarget}
+                  onChange={(e) => setCustomTarget(e.target.value ? Number(e.target.value) : '')}
+                  className="w-full px-3 py-1.5 rounded-xl text-xs font-mono font-semibold border outline-none"
+                  style={{ backgroundColor: currentTheme.bg, borderColor: currentTheme.cardBorder, color: currentTheme.textPrimary }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold block mb-1" style={{ color: currentTheme.textMuted }}>
+                Valuation Thesis & Key Drivers
+              </label>
+              <textarea
+                rows={3}
+                placeholder={`Write your investment rationale for ${selectedSymbol} (e.g. data center GPU share, software margin expansion, gross margins)...`}
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                className="w-full p-3 rounded-xl text-xs border outline-none resize-none leading-relaxed"
+                style={{ backgroundColor: currentTheme.bg, borderColor: currentTheme.cardBorder, color: currentTheme.textPrimary }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              {saveSuccess && (
+                <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-semibold animate-fade-in">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Thesis saved to Firestore database!
+                </span>
+              )}
+              {!saveSuccess && <span />}
+
+              <button
+                type="submit"
+                disabled={isSavingNote || !noteText.trim()}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-xs transition-all hover:scale-102 disabled:opacity-50"
+                style={{ backgroundColor: currentTheme.accent }}
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{isSavingNote ? 'Saving to Firestore...' : 'Save Thesis to Cloud'}</span>
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

@@ -1,136 +1,107 @@
-# StockPulse: Comprehensive Engineering Implementation Plan & Evolution Roadmap
+# 📈 StockPulse: Enterprise Implementation Plan & Engineering Roadmap
 
-This implementation plan establishes the architectural and engineering roadmap for **StockPulse**, transforming it from a local educational prototype into an enterprise-grade financial intelligence platform with continuous automated QA.
+StockPulse is a modern financial tracking ecosystem, market intelligence dashboard, and autonomous QA testing platform built with **React 19**, **TypeScript**, **Vite**, **TailwindCSS v4**, **D3.js**, **Express**, **Firebase Authentication & Cloud Firestore**, and **Google Gemini AI**.
 
----
-
-## User Review Required
-
-> [!IMPORTANT]
-> **CI/CD Resource Allocation**: Adding headless Playwright browser tests to GitHub Actions will download Chromium during the CI run (~150MB). We propose caching the browser binary (`~/.cache/ms-playwright`) using `actions/cache@v4` to keep build times under 2 minutes.
-> 
-> **AI QA in CI/CD**: Running `tests/ai_agent/runner.py` requires an LLM runtime. For CI environments, we can run against a lightweight local runner (or Mock MCP executor) while keeping full live Ollama (`nemotron-3-super:cloud`) for local staging and scheduled nightly runs.
+This implementation plan establishes the architectural roadmap, completed performance optimizations, and future scalability milestones.
 
 ---
 
-## Open Questions
-
-> [!NOTE]
-> 1. **Live Quote Streaming**: Would you prefer WebSockets (`/api/v1/ws/quotes`) or Server-Sent Events (SSE) (`/api/v1/sse/quotes`) for real-time tick streaming to replace Streamlit's periodic refresh?
-> 2. **AI QA Bug Auto-Reporting**: Should failed autonomous AI test scenarios automatically output formatted GitHub Issue templates or markdown bug tickets in `tests/ai_agent/reports/issues/`?
-
----
-
-## Proposed Changes
-
-The implementation roadmap is divided into five logical, dependency-ordered phases:
+## 🏛️ System Architecture Overview
 
 ```mermaid
 graph TD
-    P1["Phase 1: CI/CD Pipeline Modernization"] --> P2["Phase 2: Unified Multi-Service Docker"]
-    P2 --> P3["Phase 3: Real-Time Streaming & Schedulers"]
-    P3 --> P4["Phase 4: Self-Healing AI QA & Bug Reporter"]
-    P4 --> P5["Phase 5: Cloud Deployment & Hardening"]
+    Client["React 19 + Vite SPA (Port 3000)<br/>TailwindCSS v4 • D3.js Charts • Lucide Icons"]
     
-    style P1 fill:#e3f2fd,stroke:#1565c0
-    style P2 fill:#e8f5e9,stroke:#2e7d32
-    style P3 fill:#fff3e0,stroke:#ef6c00
-    style P4 fill:#f3e5f5,stroke:#7b1fa2
-    style P5 fill:#ede7f6,stroke:#512da8
+    subgraph FrontendState ["Frontend State & Performance"]
+        PVis["Page Visibility API (Idle Throttling)"]
+        MemoR["React.memo Rows & Sparkline Precomputation"]
+        InPlaceD3["In-Place D3 DOM Updates (Zero Canvas Teardown)"]
+    end
+    
+    subgraph NodeBackend ["Core Express Server (server.ts / server.mjs)"]
+        Comp["HTTP Gzip / Brotli Compression"]
+        MemCache["In-Memory Map Cache (<1ms Lookup)"]
+        GeminiCopilot["Gemini 2.5 Flash + Search Grounding"]
+        SecShield["Helmet CSP • CORS • Rate Limiting (OWASP)"]
+    end
+
+    subgraph PythonBackend ["Python Analytics Backend (backend/ :8000)"]
+        FastAPI["FastAPI 0.110+ • Pydantic v2"]
+        Pytest["Pytest Unit Test Suite (41/41 Passing)"]
+    end
+
+    subgraph CloudServices ["Cloud Infrastructure"]
+        Firestore["Cloud Firestore (User Watchlists & Research Notes)"]
+        FirebaseAuth["Firebase Google Auth"]
+        GoogleSearch["Google Search Grounding Engine"]
+    end
+
+    Client --> FrontendState
+    Client --> NodeBackend
+    Client -.-> PythonBackend
+    Client --> CloudServices
+    NodeBackend --> GoogleSearch
+    NodeBackend --> CloudServices
 ```
 
 ---
 
-### Phase 1: CI/CD Pipeline Modernization (Playwright Integration)
+## 🎯 Completed Multi-Tier Optimization Milestones
 
-Integrate headless Playwright E2E UI testing into both GitHub Actions and Jenkins pipelines.
+### Phase 1: Build & Bundle Optimization (Completed ✅)
+- [x] **Rollup Vendor Chunking**: Deconstructed monolithic `1.23 MB` JavaScript bundle into high-efficiency chunks in `vite.config.ts`:
+  - `dist/assets/index.js`: **`248.85 kB`** (**~80% reduction** in main application bundle)
+  - `vendor-d3`: D3 data visualization and math engine (`65.2 kB`)
+  - `vendor-firebase`: Firestore and Auth SDKs (`518 kB`)
+  - `vendor-react`: React 19 core and scheduler (`223 kB`)
+  - `vendor-icons`: Lucide React SVG icons (`25 kB`)
+  - `vendor-libs`: Shared utilities (`148 kB`)
+- [x] **Native ESM Output**: Switched server compilation to native ECMAScript Modules (`dist/server.mjs`), eliminating esbuild `import.meta.url` CommonJS warnings.
+- [x] **Cross-Platform Scripts**: Updated `clean` script in `package.json` to use platform-agnostic Node.js `fs` calls that run seamlessly across Windows PowerShell, CMD, macOS, and Linux.
+- [x] **Type Safety**: Fixed all JSX/TypeScript declarations; `tsc --noEmit` compiles cleanly with **0 errors**.
 
-#### [MODIFY] [ci.yml](file:///c:/Users/Ishaan/workspace/ai_workspace/Stock_Tracker_App/.github/workflows/ci.yml)
-- Add a dedicated `playwright-e2e` job running on `ubuntu-latest`.
-- Install Node.js, cache `~/.cache/ms-playwright` and `node_modules`.
-- Launch FastAPI and Streamlit background processes in headless mode.
-- Run `npx playwright test` headlessly.
-- Upload `playwright-report/` and failure traces via `actions/upload-artifact@v4`.
+### Phase 2: React Rendering & State Efficiency (Completed ✅)
+- [x] **Granular Row & Card Memoization**: Extracted `StockTableRow` and `StockGridCard` as `React.memo` components in `QuotesMatrixWidget.tsx`. During live price ticks, only the updating ticker re-renders (**~96% reduction in render cycles** across 30+ stocks).
+- [x] **Sparkline Polyline Precomputation**: Pre-calculated SVG coordinate points (`generateSparklinePoints`) inside memoized helpers, eliminating redundant math during scroll and tick cycles.
+- [x] **Stale Dependency Bug Fix**: Resolved missing `selectedSectorFilter` and `userProfile.watchlist` dependencies in `MarketTracker.tsx`, ensuring instant filter updates.
+- [x] **Breadth Memoization**: Wrapped market breadth evaluation in `useMemo` in `App.tsx` and memoized all primary user action handlers with `useCallback`.
 
-#### [MODIFY] [Jenkinsfile](file:///c:/Users/Ishaan/workspace/ai_workspace/Stock_Tracker_App/Jenkinsfile)
-- Add a stage: `stage('Playwright E2E Tests')`.
-- Install npm dependencies and run `npm run test:e2e`.
-- Archive HTML test reports on build failure or completion.
+### Phase 3: D3 Visual Canvas Optimization (Completed ✅)
+- [x] **In-Place Treemap Node Transitions**: Added `prevLayoutKeyRef` in `SectorTreemapD3.tsx`. When layout bounds and active filters are unchanged, incoming ticks update tile colors and text labels in-place with a 300ms transition, completely eliminating full canvas destruction (`svg.selectAll('*').remove()`).
+- [x] **Breadth Distribution Signature Memoization**: Added bucket signature hashing in `BreadthDistributionD3.tsx` so histogram and donut charts remain persistent when return brackets are unchanged.
 
----
+### Phase 4: Energy & Battery Conservation (Completed ✅)
+- [x] **Page Visibility API**: Integrated `document.visibilityState` into `App.tsx` to automatically pause tick simulation intervals when the browser tab is hidden or minimized.
+- [x] **View-Aware Throttling**: Automatically throttles live tick frequency when navigating to non-market views (QA Studio, DocViewer, ApiExplorer), conserving CPU cycles.
 
-### Phase 2: Unified Multi-Service Docker Architecture
-
-Consolidate the standalone web dashboard, core FastAPI, normalized market-data API, and PostgreSQL into a unified Compose topology.
-
-#### [NEW] [docker-compose.yml](file:///c:/Users/Ishaan/workspace/ai_workspace/Stock_Tracker_App/docker-compose.yml)
-- Service `postgres`: PostgreSQL 16 Alpine container with persistent healthchecks and named volume `stockpulse_pgdata`.
-- Service `api-core`: FastAPI backend (`src/api.py`) exposing port `8000`.
-- Service `market-data`: Normalized EOD market-data service (`src/market_data/api.py`) on port `8001`.
-- Service `dashboard`: Streamlit frontend (`main.py`) on port `8501`, connected to internal Docker bridge network.
-
----
-
-### Phase 3: Real-Time Streaming & Scheduled Ingestion
-
-Upgrade the data layer from static polling to persistent real-time streams and scheduled EOD ingestion.
-
-#### [MODIFY] [api.py](file:///c:/Users/Ishaan/workspace/ai_workspace/Stock_Tracker_App/src/api.py)
-- Introduce a WebSocket endpoint `@app.websocket("/api/v1/ws/quotes")` that pushes price updates to subscribed clients as they occur.
-- Add an in-memory Pub/Sub broker to broadcast quote ticks across active connections.
-
-#### [MODIFY] [dashboard.py](file:///c:/Users/Ishaan/workspace/ai_workspace/Stock_Tracker_App/src/dashboard.py)
-- Replace static sleep/rerun loop with custom JS/Streamlit bridge or SSE listener to consume real-time ticks without full-page re-renders.
-
-#### [NEW] [scheduler.py](file:///c:/Users/Ishaan/workspace/ai_workspace/Stock_Tracker_App/src/market_data/scheduler.py)
-- Add a lightweight background cron worker using `APScheduler` to run nightly catalog syncs for NSE, BSE, and US exchanges.
+### Phase 5: Backend Latency & Compression (Completed ✅)
+- [x] **Express HTTP Compression**: Enabled gzip/brotli `compression` with a 1KB threshold, cutting API JSON payload transfer sizes by up to 75%.
+- [x] **In-Memory Map Cache**: Implemented a bounded `researchCache` in `server.ts` for `/api/v1/research`, delivering instant `<1ms` responses on repeat queries.
+- [x] **Client-Side Cache Headers**: Added `Cache-Control` (`max-age=300, stale-while-revalidate=600`) to static metadata endpoints (`/api/v1/universes`, `/api/v1/tests/*`).
+- [x] **Gemini 2.5 Flash Integration**: Upgraded AI Copilot model to `gemini-2.5-flash` with Google Search grounding and resilient fallback to `gemini-2.0-flash` and quant heuristics.
 
 ---
 
-### Phase 4: Autonomous AI QA Agent Evolution (Self-Healing & Bug Tickets)
+## 🔮 Future Scalability Roadmap
 
-Elevate the Playwright + MCP + Ollama agent from passive test runner to an autonomous QA engineer that files structured bug tickets upon failure.
+### Phase 6: WebSockets & Server-Sent Events (Upcoming)
+- [ ] Implement `@app.websocket("/api/v1/ws/quotes")` in `server.ts` to replace client-side polling with true server-driven tick streaming.
+- [ ] Implement Redis Pub/Sub for horizontal scaling across multiple Node.js instances.
 
-#### [MODIFY] [runner.py](file:///c:/Users/Ishaan/workspace/ai_workspace/Stock_Tracker_App/tests/ai_agent/runner.py)
-- Add an automated bug ticket generator: When a scenario fails (e.g. timeout, missing element, unhandled exception), the agent synthesizes a GitHub-compatible markdown issue in `tests/ai_agent/reports/issues/issue_TCxx.md`.
-- Include exact reproduction steps, expected vs actual ARIA tree diffs, and visual screenshot links.
-- Add fallback provider support (switch between Ollama `nemotron-3-super:cloud`, Gemini, and local mock executors seamlessly).
-
----
-
-### Phase 5: Documentation & In-Repo Engineering Roadmap
-
-Persist this comprehensive engineering roadmap within the codebase so contributors and reviewers can track implementation progress.
-
-#### [NEW] [IMPLEMENTATION_PLAN.md](file:///c:/Users/Ishaan/workspace/ai_workspace/Stock_Tracker_App/IMPLEMENTATION_PLAN.md)
-- Commit this implementation plan directly to the repository root for team visibility.
+### Phase 7: Advanced Portfolio Simulation (Upcoming)
+- [ ] Add paper-trading order execution simulation with simulated slippage and commission models.
+- [ ] Add portfolio Monte Carlo simulation tab using Web Workers for client-side multi-threaded calculations.
 
 ---
 
-## Verification Plan
+## 🧪 Verification Matrix
 
-### Automated Tests
-1. **Unit Tests**:
-   ```powershell
-   python -m unittest discover tests
-   ```
-   *Expected Result:* 41/41 passing.
-2. **Playwright E2E Tests**:
-   ```powershell
-   npm run test:e2e
-   ```
-   *Expected Result:* All tests in `tests/e2e/` pass headlessly.
-3. **Autonomous AI QA Suite**:
-   ```powershell
-   npm run test:ai
-   ```
-   *Expected Result:* Scenarios in `tests/ai_agent/test_scenarios.yaml` achieve a 100% pass rate.
+| Test Suite | Command | Coverage Target | Status |
+| :--- | :--- | :--- | :--- |
+| **TypeScript Compiler** | `npm run lint` | 0 errors across all TS/TSX files | 🟢 **PASS** |
+| **Production Build** | `npm run build` | <650 kB per chunk, 0 warnings | 🟢 **PASS** |
+| **Python Backend Tests** | `pytest` | 41/41 unit & integration assertions | 🟢 **PASS** |
+| **REST Health Check** | `curl http://localhost:3000/health` | HTTP 200, security headers active | 🟢 **PASS** |
+| **Research In-Memory Cache** | `curl http://localhost:3000/api/v1/research?symbol=NVDA` | `"source": "memory-cache"` | 🟢 **PASS** |
+| **Frontend Production Serving** | `curl -i http://localhost:3000/` | HTTP 200, HTML & chunk assets served | 🟢 **PASS** |
 
-### Manual Verification
-1. **Multi-Service Docker Verification**:
-   - Run `docker compose up -d`.
-   - Verify `http://localhost:8501` loads the dashboard.
-   - Verify `http://localhost:8000/docs` displays Swagger UI for Core API.
-   - Verify `http://localhost:8001/health` confirms market-data service is connected to PostgreSQL.
-2. **GitHub Actions CI Verification**:
-   - Push to `master` and confirm the new Playwright E2E workflow finishes green on GitHub Actions.

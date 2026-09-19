@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import { MarketBreadth, StockQuote, ThemeConfig } from '../../types';
-import { BarChart3, PieChart, CircleDot, Info, TrendingUp, TrendingDown, Layers } from 'lucide-react';
+import { BarChart3, PieChart, CircleDot, Layers, TrendingUp, TrendingDown, Percent, DollarSign, Activity } from 'lucide-react';
 import { formatCurrency, formatLargeNumber } from '../../utils/marketEngine';
 
 interface BreadthDistributionD3Props {
@@ -18,8 +18,23 @@ interface BucketData {
   label: string;
   range: [number, number];
   count: number;
+  percentage: number;
+  avgChange: number;
   stocks: StockQuote[];
   type: 'gain' | 'loss' | 'neutral';
+}
+
+interface TooltipInfo {
+  title: string;
+  badge?: string;
+  badgeType?: 'gain' | 'loss' | 'neutral' | 'info';
+  percentageValue: string;
+  subtitle: string;
+  metricLabel?: string;
+  metricValue?: string;
+  details: { label: string; value: string; isGain?: boolean; isLoss?: boolean }[];
+  x: number;
+  y: number;
 }
 
 export const BreadthDistributionD3: React.FC<BreadthDistributionD3Props> = ({
@@ -31,25 +46,21 @@ export const BreadthDistributionD3: React.FC<BreadthDistributionD3Props> = ({
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const prevRenderKeyRef = useRef<string>('');
   const [vizMode, setVizMode] = useState<VizMode>('histogram');
-  const [hoveredInfo, setHoveredInfo] = useState<{
-    title: string;
-    subtitle: string;
-    details: string[];
-    x: number;
-    y: number;
-  } | null>(null);
+  const [hoveredInfo, setHoveredInfo] = useState<TooltipInfo | null>(null);
 
   // Group stocks into quantitative return bins for the histogram
   const buckets: BucketData[] = useMemo(() => {
+    const totalStocks = stocks.length || 1;
     const bins: BucketData[] = [
-      { label: '< -3%', range: [-Infinity, -3], count: 0, stocks: [], type: 'loss' },
-      { label: '-3% to -1.5%', range: [-3, -1.5], count: 0, stocks: [], type: 'loss' },
-      { label: '-1.5% to 0%', range: [-1.5, -0.05], count: 0, stocks: [], type: 'loss' },
-      { label: '0% ±0.05%', range: [-0.05, 0.05], count: 0, stocks: [], type: 'neutral' },
-      { label: '0% to +1.5%', range: [0.05, 1.5], count: 0, stocks: [], type: 'gain' },
-      { label: '+1.5% to +3%', range: [1.5, 3], count: 0, stocks: [], type: 'gain' },
-      { label: '> +3%', range: [3, Infinity], count: 0, stocks: [], type: 'gain' },
+      { label: '< -3%', range: [-Infinity, -3], count: 0, percentage: 0, avgChange: 0, stocks: [], type: 'loss' },
+      { label: '-3% to -1.5%', range: [-3, -1.5], count: 0, percentage: 0, avgChange: 0, stocks: [], type: 'loss' },
+      { label: '-1.5% to 0%', range: [-1.5, -0.05], count: 0, percentage: 0, avgChange: 0, stocks: [], type: 'loss' },
+      { label: '0% ±0.05%', range: [-0.05, 0.05], count: 0, percentage: 0, avgChange: 0, stocks: [], type: 'neutral' },
+      { label: '0% to +1.5%', range: [0.05, 1.5], count: 0, percentage: 0, avgChange: 0, stocks: [], type: 'gain' },
+      { label: '+1.5% to +3%', range: [1.5, 3], count: 0, percentage: 0, avgChange: 0, stocks: [], type: 'gain' },
+      { label: '> +3%', range: [3, Infinity], count: 0, percentage: 0, avgChange: 0, stocks: [], type: 'gain' },
     ];
 
     stocks.forEach((stock) => {
@@ -63,16 +74,32 @@ export const BreadthDistributionD3: React.FC<BreadthDistributionD3Props> = ({
       }
     });
 
+    bins.forEach((b) => {
+      b.percentage = Number(((b.count / totalStocks) * 100).toFixed(1));
+      if (b.stocks.length > 0) {
+        const sum = b.stocks.reduce((acc, s) => acc + s.changePercent, 0);
+        b.avgChange = Number((sum / b.stocks.length).toFixed(2));
+      }
+    });
+
     return bins;
   }, [stocks]);
 
-  // Main D3 Rendering Effect
+  // Main D3 Rendering Effect with Signature Memoization
   useEffect(() => {
     if (!svgRef.current || !containerRef.current) return;
 
     const container = containerRef.current;
     const width = container.clientWidth || 550;
     const height = 220;
+
+    const bucketSignature = buckets.map((b) => `${b.label}:${b.count}`).join('|');
+    const renderKey = `${vizMode}_${currentTheme.id}_${width}_${bucketSignature}_${breadth.advancers}_${breadth.decliners}_${selectedSymbol || 'none'}`;
+
+    if (prevRenderKeyRef.current === renderKey) {
+      return;
+    }
+    prevRenderKeyRef.current = renderKey;
 
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove(); // clear previous canvas
@@ -82,9 +109,9 @@ export const BreadthDistributionD3: React.FC<BreadthDistributionD3Props> = ({
     const g = svg.append('g');
 
     if (vizMode === 'histogram') {
-      renderHistogram(g, width, height, buckets, currentTheme, (info) => setHoveredInfo(info));
+      renderHistogram(g, width, height, buckets, stocks.length, currentTheme, (info) => setHoveredInfo(info));
     } else if (vizMode === 'donut') {
-      renderDonut(g, width, height, breadth, currentTheme, (info) => setHoveredInfo(info));
+      renderDonut(g, width, height, breadth, stocks, currentTheme, (info) => setHoveredInfo(info));
     } else if (vizMode === 'bubbles') {
       renderBubbleSpread(g, width, height, stocks, currentTheme, selectedSymbol, onSelectStock, (info) =>
         setHoveredInfo(info)
@@ -116,11 +143,11 @@ export const BreadthDistributionD3: React.FC<BreadthDistributionD3Props> = ({
                 Real-Time Breadth Distribution (D3.js)
               </h3>
               <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400">
-                LIVE D3 ENGINE
+                INTERACTIVE TOOLTIPS
               </span>
             </div>
             <p className="text-[11px]" style={{ color: currentTheme.textMuted }}>
-              Institutional volume & constituent distribution across gain/loss spectrum
+              Hover over bars, slices, or constituent nodes to inspect exact percentages & metrics
             </p>
           </div>
         </div>
@@ -181,27 +208,88 @@ export const BreadthDistributionD3: React.FC<BreadthDistributionD3Props> = ({
       <div ref={containerRef} className="relative w-full overflow-hidden select-none">
         <svg ref={svgRef} className="w-full overflow-visible" />
 
-        {/* Dynamic D3 Tooltip Overlay */}
+        {/* Enhanced Interactive Tooltip Overlay with Exact Percentages */}
         {hoveredInfo && (
           <div
-            className="pointer-events-none absolute z-20 rounded-xl p-2.5 shadow-xl border backdrop-blur-md text-xs font-mono transition-all duration-75"
+            id="d3-interactive-tooltip"
+            className="pointer-events-none absolute z-30 rounded-xl p-3 shadow-2xl border backdrop-blur-md text-xs font-mono transition-all duration-75 min-w-[210px] max-w-[280px]"
             style={{
-              left: Math.min(Math.max(10, hoveredInfo.x - 70), (containerRef.current?.clientWidth || 300) - 170),
-              top: Math.max(8, hoveredInfo.y - 80),
-              backgroundColor: `${currentTheme.cardBg}f0`,
+              left: Math.min(
+                Math.max(12, hoveredInfo.x - 100),
+                (containerRef.current?.clientWidth || 350) - 240
+              ),
+              top: Math.max(6, hoveredInfo.y - 120),
+              backgroundColor: `${currentTheme.cardBg}f5`,
               borderColor: currentTheme.accent,
               color: currentTheme.textPrimary,
+              boxShadow: `0 10px 25px -5px ${currentTheme.cardBorder}, 0 0 12px ${currentTheme.accent}30`,
             }}
           >
-            <div className="font-bold text-xs" style={{ color: currentTheme.accent }}>
-              {hoveredInfo.title}
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <span className="font-bold text-xs truncate" style={{ color: currentTheme.textPrimary }}>
+                {hoveredInfo.title}
+              </span>
+              {hoveredInfo.badge && (
+                <span
+                  className="px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0"
+                  style={{
+                    backgroundColor:
+                      hoveredInfo.badgeType === 'gain'
+                        ? `${currentTheme.gainColor}25`
+                        : hoveredInfo.badgeType === 'loss'
+                        ? `${currentTheme.lossColor}25`
+                        : `${currentTheme.accent}25`,
+                    color:
+                      hoveredInfo.badgeType === 'gain'
+                        ? currentTheme.gainColor
+                        : hoveredInfo.badgeType === 'loss'
+                        ? currentTheme.lossColor
+                        : currentTheme.accent,
+                  }}
+                >
+                  {hoveredInfo.badge}
+                </span>
+              )}
             </div>
-            <div className="text-[11px] opacity-80 mb-1">{hoveredInfo.subtitle}</div>
-            <div className="space-y-0.5 text-[10px] text-slate-300">
-              {hoveredInfo.details.map((d, i) => (
-                <div key={i}>{d}</div>
-              ))}
+
+            {/* Prominent Percentage Metric */}
+            <div className="flex items-baseline justify-between py-1 px-2 rounded-lg my-1.5 bg-white/5 border" style={{ borderColor: currentTheme.cardBorder }}>
+              <span className="text-[11px]" style={{ color: currentTheme.textMuted }}>
+                {hoveredInfo.metricLabel || 'Weight / Pct'}:
+              </span>
+              <span className="text-sm font-black font-mono" style={{ color: currentTheme.accent }}>
+                {hoveredInfo.percentageValue}
+              </span>
             </div>
+
+            <div className="text-[11px] opacity-80 mb-2 font-sans font-medium" style={{ color: currentTheme.textSecondary }}>
+              {hoveredInfo.subtitle}
+            </div>
+
+            {/* Detailed Item List / Breakdown */}
+            {hoveredInfo.details.length > 0 && (
+              <div className="space-y-1 pt-1.5 border-t" style={{ borderColor: currentTheme.cardBorder }}>
+                {hoveredInfo.details.map((d, i) => (
+                  <div key={i} className="flex items-center justify-between text-[10.5px]">
+                    <span className="truncate max-w-[130px]" style={{ color: currentTheme.textMuted }}>
+                      {d.label}
+                    </span>
+                    <span
+                      className="font-bold font-mono ml-2 shrink-0"
+                      style={{
+                        color: d.isGain
+                          ? currentTheme.gainColor
+                          : d.isLoss
+                          ? currentTheme.lossColor
+                          : currentTheme.textPrimary,
+                      }}
+                    >
+                      {d.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -229,7 +317,7 @@ export const BreadthDistributionD3: React.FC<BreadthDistributionD3Props> = ({
         <div className="text-[11px]">
           Ratio: <strong style={{ color: breadth.advanceDeclineRatio >= 1.0 ? currentTheme.gainColor : currentTheme.lossColor }}>
             {breadth.advanceDeclineRatio} : 1.0
-          </strong> | Avg Δ: <strong style={{ color: breadth.avgChangePercent >= 0 ? currentTheme.gainColor : currentTheme.lossColor }}>
+          </strong> | Avg Return: <strong style={{ color: breadth.avgChangePercent >= 0 ? currentTheme.gainColor : currentTheme.lossColor }}>
             {breadth.avgChangePercent > 0 ? '+' : ''}{breadth.avgChangePercent}%
           </strong>
         </div>
@@ -239,15 +327,16 @@ export const BreadthDistributionD3: React.FC<BreadthDistributionD3Props> = ({
 };
 
 // -------------------------------------------------------------
-// D3 Render Helper 1: Return Histogram
+// D3 Render Helper 1: Return Histogram with Enhanced Tooltips
 // -------------------------------------------------------------
 function renderHistogram(
   g: d3.Selection<SVGGElement, unknown, null, undefined>,
   width: number,
   height: number,
   buckets: BucketData[],
+  totalStocksCount: number,
   theme: ThemeConfig,
-  onHover: (info: any | null) => void
+  onHover: (info: TooltipInfo | null) => void
 ) {
   const margin = { top: 15, right: 15, bottom: 35, left: 35 };
   const innerWidth = width - margin.left - margin.right;
@@ -304,12 +393,25 @@ function renderHistogram(
     .attr('opacity', 0.85)
     .attr('cursor', 'pointer')
     .on('mouseenter', function (event, d) {
-      d3.select(this).attr('opacity', 1).attr('stroke', '#ffffff').attr('stroke-width', 1.5);
+      d3.select(this)
+        .attr('opacity', 1)
+        .attr('stroke', '#ffffff')
+        .attr('stroke-width', 2);
       const [mouseX, mouseY] = d3.pointer(event, g.node());
+
       onHover({
-        title: `Bucket: ${d.label}`,
-        subtitle: `${d.count} Constituents (${((d.count / (buckets.reduce((acc, b) => acc + b.count, 0) || 1)) * 100).toFixed(0)}%)`,
-        details: d.stocks.map((s) => `${s.symbol}: ${s.changePercent > 0 ? '+' : ''}${s.changePercent.toFixed(2)}% (${formatCurrency(s.price, s.currency)})`),
+        title: `Bin Range: ${d.label}`,
+        badge: `${d.count} Constituents`,
+        badgeType: d.type === 'gain' ? 'gain' : d.type === 'loss' ? 'loss' : 'neutral',
+        percentageValue: `${d.percentage}% of Universe`,
+        metricLabel: 'Universe Share',
+        subtitle: d.stocks.length > 0 ? `Mean bin return: ${d.avgChange > 0 ? '+' : ''}${d.avgChange}%` : 'No constituents in this return bin',
+        details: d.stocks.slice(0, 5).map((s) => ({
+          label: s.symbol,
+          value: `${s.changePercent > 0 ? '+' : ''}${s.changePercent.toFixed(2)}% (${formatCurrency(s.price, s.currency)})`,
+          isGain: s.changePercent > 0,
+          isLoss: s.changePercent < 0,
+        })),
         x: mouseX + margin.left,
         y: mouseY + margin.top,
       });
@@ -369,15 +471,16 @@ function renderHistogram(
 }
 
 // -------------------------------------------------------------
-// D3 Render Helper 2: Radial Donut
+// D3 Render Helper 2: Radial Donut with Exact Percentage Tooltips
 // -------------------------------------------------------------
 function renderDonut(
   g: d3.Selection<SVGGElement, unknown, null, undefined>,
   width: number,
   height: number,
   breadth: MarketBreadth,
+  stocks: StockQuote[],
   theme: ThemeConfig,
-  onHover: (info: any | null) => void
+  onHover: (info: TooltipInfo | null) => void
 ) {
   const radius = Math.min(width, height) / 2 - 15;
   const centerX = width / 2;
@@ -385,20 +488,25 @@ function renderDonut(
 
   const donutGroup = g.append('g').attr('transform', `translate(${centerX},${centerY})`);
 
+  const total = breadth.total || stocks.length || 1;
+  const advancerPct = ((breadth.advancers / total) * 100).toFixed(1);
+  const declinerPct = ((breadth.decliners / total) * 100).toFixed(1);
+  const unchangedPct = ((breadth.unchanged / total) * 100).toFixed(1);
+
   const data = [
-    { key: 'Advancers', value: breadth.advancers || 0.001, color: theme.gainColor, type: 'gain' },
-    { key: 'Unchanged', value: breadth.unchanged || 0, color: '#64748b', type: 'neutral' },
-    { key: 'Decliners', value: breadth.decliners || 0.001, color: theme.lossColor, type: 'loss' },
+    { key: 'Advancers', value: breadth.advancers || 0.001, pct: advancerPct, color: theme.gainColor, type: 'gain' },
+    { key: 'Unchanged', value: breadth.unchanged || 0, pct: unchangedPct, color: '#64748b', type: 'neutral' },
+    { key: 'Decliners', value: breadth.decliners || 0.001, pct: declinerPct, color: theme.lossColor, type: 'loss' },
   ].filter((d) => d.value > 0);
 
   const pie = d3
-    .pie<{ key: string; value: number; color: string; type: string }>()
+    .pie<{ key: string; value: number; pct: string; color: string; type: string }>()
     .value((d) => d.value)
     .sort(null)
     .padAngle(0.04);
 
   const arc = d3
-    .arc<d3.PieArcDatum<{ key: string; value: number; color: string; type: string }>>()
+    .arc<d3.PieArcDatum<{ key: string; value: number; pct: string; color: string; type: string }>>()
     .innerRadius(radius * 0.62)
     .outerRadius(radius)
     .cornerRadius(4);
@@ -412,13 +520,33 @@ function renderDonut(
     .attr('opacity', 0.85)
     .attr('cursor', 'pointer')
     .on('mouseenter', function (event, d) {
-      d3.select(this).attr('opacity', 1).attr('stroke', '#ffffff').attr('stroke-width', 2);
+      d3.select(this).attr('opacity', 1).attr('stroke', '#ffffff').attr('stroke-width', 2.5);
       const [mouseX, mouseY] = d3.pointer(event, g.node());
-      const total = breadth.total || 1;
+
+      const constituentSubset =
+        d.data.type === 'gain'
+          ? stocks.filter((s) => s.changePercent > 0)
+          : d.data.type === 'loss'
+          ? stocks.filter((s) => s.changePercent < 0)
+          : stocks.filter((s) => s.changePercent === 0);
+
+      const subsetAvg =
+        constituentSubset.length > 0
+          ? (constituentSubset.reduce((a, s) => a + s.changePercent, 0) / constituentSubset.length).toFixed(2)
+          : '0.00';
+
       onHover({
         title: d.data.key,
-        subtitle: `${Math.round(d.data.value)} Constituents (${((d.data.value / total) * 100).toFixed(1)}%)`,
-        details: [`Total Universe Breadth: ${total}`, `Category: ${d.data.type.toUpperCase()}`],
+        badge: `${Math.round(d.data.value)} / ${total} Stocks`,
+        badgeType: d.data.type === 'gain' ? 'gain' : d.data.type === 'loss' ? 'loss' : 'neutral',
+        percentageValue: `${d.data.pct}% of Market Breadth`,
+        metricLabel: 'Market Share',
+        subtitle: `Segment average price movement: ${Number(subsetAvg) > 0 ? '+' : ''}${subsetAvg}%`,
+        details: [
+          { label: 'Advancers Ratio', value: `${breadth.advanceDeclineRatio} : 1.0` },
+          { label: 'Top Contributor', value: `${breadth.topGainer.symbol} (+${breadth.topGainer.changePercent.toFixed(2)}%)`, isGain: true },
+          { label: 'Max Drawdown', value: `${breadth.topLoser.symbol} (${breadth.topLoser.changePercent.toFixed(2)}%)`, isLoss: true },
+        ],
         x: mouseX,
         y: mouseY,
       });
@@ -450,7 +578,7 @@ function renderDonut(
 }
 
 // -------------------------------------------------------------
-// D3 Render Helper 3: Bubble / Beeswarm Spread
+// D3 Render Helper 3: Bubble / Beeswarm Spread with Specific Percentage Tooltips
 // -------------------------------------------------------------
 function renderBubbleSpread(
   g: d3.Selection<SVGGElement, unknown, null, undefined>,
@@ -460,7 +588,7 @@ function renderBubbleSpread(
   theme: ThemeConfig,
   selectedSymbol?: string,
   onSelectStock?: (stock: StockQuote) => void,
-  onHover?: (info: any | null) => void
+  onHover?: (info: TooltipInfo | null) => void
 ) {
   const margin = { top: 20, right: 30, bottom: 35, left: 30 };
   const innerWidth = width - margin.left - margin.right;
@@ -538,14 +666,19 @@ function renderBubbleSpread(
       d3.select(this).select('circle').attr('stroke', '#ffffff').attr('stroke-width', 2.5);
       const [mouseX, mouseY] = d3.pointer(event, g.node());
       if (onHover) {
+        const isGain = d.stock.changePercent >= 0;
         onHover({
-          title: `${d.stock.symbol} (${d.stock.name})`,
-          subtitle: `${d.stock.changePercent > 0 ? '+' : ''}${d.stock.changePercent.toFixed(2)}% | ${formatCurrency(d.stock.price, d.stock.currency)}`,
+          title: `${d.stock.symbol} — ${d.stock.name}`,
+          badge: isGain ? 'Advancing' : 'Declining',
+          badgeType: isGain ? 'gain' : 'loss',
+          percentageValue: `${isGain ? '+' : ''}${d.stock.changePercent.toFixed(2)}% (24h)`,
+          metricLabel: '24h Change',
+          subtitle: `Current Price: ${formatCurrency(d.stock.price, d.stock.currency)} (Day Δ: ${isGain ? '+' : ''}${formatCurrency(d.stock.change, d.stock.currency)})`,
           details: [
-            `Market Cap: ${d.stock.marketCapFormatted}`,
-            `Day Volume: ${formatLargeNumber(d.stock.volume)}`,
-            `Exchange: ${d.stock.exchange}`,
-            `Click to open Deep Dive Chart`,
+            { label: 'Day Range', value: `$${d.stock.low.toFixed(2)} - $${d.stock.high.toFixed(2)}` },
+            { label: 'Market Cap', value: d.stock.marketCapFormatted },
+            { label: 'Trading Volume', value: formatLargeNumber(d.stock.volume) },
+            { label: 'P/E Ratio', value: d.stock.peRatio ? `${d.stock.peRatio.toFixed(1)}x` : 'N/A' },
           ],
           x: mouseX + margin.left,
           y: mouseY + margin.top,
@@ -595,3 +728,4 @@ function renderBubbleSpread(
     .attr('font-size', '9px')
     .attr('font-family', 'monospace');
 }
+

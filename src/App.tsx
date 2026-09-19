@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { MarketBreadth, MarketUniverseId, StockQuote, ThemeId } from './types';
 import { applyThemeToDocument, getStoredTheme, saveTheme, THEMES } from './utils/theme';
 import { INITIAL_STOCKS } from './data/universes';
 import { calculateBreadth, simulateTickUpdate } from './utils/marketEngine';
 import { Header } from './components/Header';
+import { BreadcrumbNav } from './components/BreadcrumbNav';
 import { MarketTracker } from './components/MarketTracker/MarketTracker';
 import { FundamentalsView } from './components/Fundamentals/FundamentalsView';
 import { AICopilot } from './components/AICopilot/AICopilot';
@@ -29,38 +30,66 @@ export function App() {
   // Selected stock for deep dive/charting
   const [selectedStock, setSelectedStock] = useState<StockQuote | null>(null);
 
+  // Active sector filter/expanded state
+  const [activeSector, setActiveSector] = useState<string | null>(null);
+
+  // Reset sector expansion when universe changes
+  useEffect(() => {
+    setActiveSector(null);
+  }, [activeUniverse]);
+
   // Focus symbol for Fundamentals tab
   const [fundamentalsFocusSymbol, setFundamentalsFocusSymbol] = useState<string>('NVDA');
 
   // Injected prompt for Copilot tab
   const [copilotPrompt, setCopilotPrompt] = useState<string | null>(null);
 
-  // Live tick streaming controls
+  // Live tick streaming controls & Page Visibility optimization
   const [isStreaming, setIsStreaming] = useState(true);
+  const [isTabVisible, setIsTabVisible] = useState(() => (typeof document !== 'undefined' ? !document.hidden : true));
   const [streamSpeed, setStreamSpeed] = useState(3000); // 3 seconds default
   const [lastTickInfo, setLastTickInfo] = useState<{ symbol: string; isGain: boolean; time: string } | null>(null);
   const [flashingSymbols, setFlashingSymbols] = useState<Record<string, 'gain' | 'loss'>>({});
+
+  // Page Visibility API: pause background ticking to preserve battery and CPU
+  useEffect(() => {
+    const handleVisibility = () => {
+      setIsTabVisible(!document.hidden);
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
 
   // Theme application on mount & change
   useEffect(() => {
     applyThemeToDocument(currentTheme);
   }, [currentTheme]);
 
-  const handleSetThemeId = (themeId: ThemeId) => {
+  const handleSetThemeId = useCallback((themeId: ThemeId) => {
     const nextTheme = THEMES[themeId];
     if (nextTheme) {
       setCurrentTheme(nextTheme);
       saveTheme(themeId);
     }
-  };
+  }, []);
 
   // Active stock quotes for current universe
-  const activeStocks = universeQuotes[activeUniverse] || INITIAL_STOCKS['global-megacaps'];
-  const breadth = calculateBreadth(activeStocks);
+  const activeStocks = useMemo(() => {
+    return universeQuotes[activeUniverse] || INITIAL_STOCKS['global-megacaps'];
+  }, [universeQuotes, activeUniverse]);
 
-  // Live tick streamer loop
+  // Memoized market breadth calculation (avoids recalculating unless activeStocks reference changes)
+  const breadth = useMemo(() => {
+    return calculateBreadth(activeStocks);
+  }, [activeStocks]);
+
+  // Optimized live tick streamer loop with Page Visibility & Tab awareness
   useEffect(() => {
-    if (!isStreaming) return;
+    // Pause streaming when turned off, when tab is hidden, or when in static documentation / testing views
+    if (!isStreaming || !isTabVisible) return;
+
+    // Throttle tick rate if on non-market tabs (e.g. docs, qa, api)
+    const effectiveInterval = (activeTab === 'tracker' || activeTab === 'fundamentals') ? streamSpeed : streamSpeed * 2.5;
 
     const interval = setInterval(() => {
       setUniverseQuotes((prev) => {
@@ -86,6 +115,7 @@ export function App() {
 
         setTimeout(() => {
           setFlashingSymbols((f) => {
+            if (!f[updatedStock.symbol]) return f;
             const next = { ...f };
             delete next[updatedStock.symbol];
             return next;
@@ -105,13 +135,13 @@ export function App() {
           [activeUniverse]: updatedList,
         };
       });
-    }, streamSpeed);
+    }, effectiveInterval);
 
     return () => clearInterval(interval);
-  }, [isStreaming, streamSpeed, activeUniverse, selectedStock]);
+  }, [isStreaming, isTabVisible, streamSpeed, activeUniverse, activeTab, selectedStock]);
 
-  // Add custom ticker to active universe
-  const handleAddCustomStock = (newStockData: Partial<StockQuote>) => {
+  // Add custom ticker to active universe (memoized)
+  const handleAddCustomStock = useCallback((newStockData: Partial<StockQuote>) => {
     const symbol = newStockData.symbol || 'CUSTOM';
     const baseStock: StockQuote = {
       symbol,
@@ -129,7 +159,7 @@ export function App() {
       avgVolume: newStockData.avgVolume || 1500000,
       marketCap: newStockData.marketCap || 15000000000,
       marketCapFormatted: newStockData.marketCapFormatted || '$15.0 B',
-      peRatio: newStockData.peRatio || 25.0,
+      peRatio: newStockData.peRatio || 24.5,
       eps: newStockData.eps || 6.0,
       dividendYield: newStockData.dividendYield || 0.015,
       week52High: newStockData.week52High || 170.0,
@@ -150,22 +180,22 @@ export function App() {
     });
 
     setSelectedStock(baseStock);
-  };
+  }, [activeUniverse]);
 
-  // Navigation callbacks
-  const handleNavigateToFundamentals = (symbol: string) => {
+  // Navigation callbacks (memoized)
+  const handleNavigateToFundamentals = useCallback((symbol: string) => {
     setFundamentalsFocusSymbol(symbol);
     setActiveTab('fundamentals');
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, []);
 
-  const handleAskCopilot = (prompt: string) => {
+  const handleAskCopilot = useCallback((prompt: string) => {
     setCopilotPrompt(prompt);
     setActiveTab('copilot');
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, []);
 
-  const handleManualRefresh = () => {
+  const handleManualRefresh = useCallback(() => {
     setUniverseQuotes((prev) => {
       const currentList = prev[activeUniverse] || [];
       const refreshed = currentList.map((s) => simulateTickUpdate(s));
@@ -174,7 +204,7 @@ export function App() {
         [activeUniverse]: refreshed,
       };
     });
-  };
+  }, [activeUniverse]);
 
   return (
     <div
@@ -201,7 +231,18 @@ export function App() {
         onRefreshManual={handleManualRefresh}
       />
 
-      {/* 2. Main Tab Body */}
+      {/* 2. Global Breadcrumb Navigation Trail */}
+      <BreadcrumbNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        activeSector={activeSector}
+        onClearSector={() => setActiveSector(null)}
+        currentTheme={currentTheme}
+        activeUniverse={activeUniverse}
+        totalAssets={activeStocks.length}
+      />
+
+      {/* 3. Main Tab Body */}
       <main id="main-content-viewport" className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
         {activeTab === 'tracker' && (
           <MarketTracker
@@ -215,6 +256,8 @@ export function App() {
             onNavigateToFundamentals={handleNavigateToFundamentals}
             onAskCopilot={handleAskCopilot}
             flashingSymbols={flashingSymbols}
+            selectedSectorFilter={activeSector}
+            onSelectSectorFilter={setActiveSector}
           />
         )}
 
@@ -251,27 +294,28 @@ export function App() {
         )}
       </main>
 
-      {/* 3. Global Enterprise Status Footer */}
+      {/* 3. Global Status Footer */}
       <footer
         id="stockpulse-global-footer"
-        className="border-t py-4 px-4 sm:px-6 text-xs transition-colors"
+        className="border-t py-3 px-4 sm:px-6 text-xs transition-colors"
         style={{
           borderColor: currentTheme.cardBorder,
           backgroundColor: `${currentTheme.bg}ee`,
           color: currentTheme.textMuted,
         }}
       >
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 font-mono text-[11px]">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: currentTheme.gainColor }} />
-            <span className="font-bold font-mono text-white">StockPulse Financial Matrix</span>
-            <span>• Built for Institutional Quant & AI Autonomous QA</span>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: currentTheme.gainColor }} />
+            <span className="font-semibold text-white">StockPulse</span>
+            <span className="opacity-50">•</span>
+            <span>Market Intelligence Platform</span>
           </div>
 
-          <div className="flex items-center gap-4 font-mono text-[11px]">
+          <div className="flex items-center gap-3">
+            <span>Universe: <strong className="text-white">{activeUniverse}</strong></span>
+            <span className="opacity-40">•</span>
             <span>Theme: <strong>{currentTheme.name}</strong></span>
-            <span>Universe: <strong>{activeUniverse}</strong></span>
-            <span className="text-emerald-400 font-bold">QA Status: 60/60 PASS (100%)</span>
           </div>
         </div>
       </footer>

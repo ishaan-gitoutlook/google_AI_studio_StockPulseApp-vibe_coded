@@ -1,0 +1,66 @@
+{
+  "rules": "firestore.rules",
+  "entities": {
+    "users": {
+      "title": "User Profiles",
+      "description": "Stores user preferences, watchlist, and custom portfolio notes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "watchlist": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "favoriteUniverse": { "type": "string" },
+        "customPriceAlerts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "symbol": { "type": "string" },
+              "targetPrice": { "type": "number" },
+              "condition": { "type": "string", "enum": ["above", "below"] },
+              "createdAt": { "type": "string" }
+            }
+          }
+        },
+        "savedAnalyses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "symbol": { "type": "string" },
+              "summary": { "type": "string" },
+              "timestamp": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "email"]
+    },
+    "user_notes": {
+      "title": "Stock Research Notes",
+      "description": "User custom research notes and valuation theses",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "symbol": { "type": "string" },
+        "companyName": { "type": "string" },
+        "noteText": { "type": "string" },
+        "rating": { "type": "string", "enum": ["STRONG_BUY", "BUY", "HOLD", "SELL", "STRONG_SELL"] },
+        "targetPrice": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "symbol", "noteText"]
+    }
+  }
+}

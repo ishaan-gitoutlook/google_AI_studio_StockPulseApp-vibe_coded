@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check authentication
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to verify user owns the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Helper to validate user note schema constraints
+    function isValidNote(data) {
+      return data.userId == request.auth.uid
+        && data.symbol is string
+        && data.symbol.size() > 0
+        && data.symbol.size() <= 12
+        && data.noteText is string
+        && data.noteText.size() <= 10000
+        && (data.companyName == null || (data.companyName is string && data.companyName.size() <= 100))
+        && (data.rating == null || (data.rating is string && data.rating.size() <= 20))
+        && (data.targetPrice == null || (data.targetPrice is number && data.targetPrice >= 0 && data.targetPrice <= 10000000));
+    }
+
+    // Helper to validate user profile schema constraints
+    function isValidUser(data, userId) {
+      return (data.id == null || data.id == userId)
+        && (data.email == null || (data.email is string && data.email.size() <= 128))
+        && (data.displayName == null || (data.displayName is string && data.displayName.size() <= 100))
+        && (data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 1000))
+        && (data.watchlist == null || (data.watchlist is list && data.watchlist.size() <= 200))
+        && (data.favoriteUniverse == null || (data.favoriteUniverse is string && data.favoriteUniverse.size() <= 50));
+    }
+
+    // User profile document: user can read and write their own data with schema enforcement
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidUser(request.resource.data, userId);
+      allow delete: if isOwner(userId);
+    }
+
+    // User-specific research notes collection with strict schema validation
+    match /user_notes/{noteId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidNote(request.resource.data);
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && isValidNote(request.resource.data);
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // Default fallback
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -15,11 +15,65 @@ import {
   DollarSign,
   ChevronRight,
   ShieldAlert,
+  Bookmark,
+  Star,
+  RotateCcw,
+  LayoutGrid,
+  GripHorizontal,
 } from 'lucide-react';
-import { MarketBreadth, MarketUniverseId, StockQuote, ThemeConfig } from '../../types';
+import {
+  MarketBreadth,
+  MarketUniverseId,
+  StockQuote,
+  ThemeConfig,
+  TrackerWidgetConfig,
+  TrackerWidgetId,
+} from '../../types';
 import { StockDetailChart } from './StockDetailChart';
 import { BreadthDistributionD3 } from './BreadthDistributionD3';
+import { WidgetContainer } from './WidgetContainer';
+import { BreadthRadarWidget } from './BreadthRadarWidget';
+import { QuotesMatrixWidget } from './QuotesMatrixWidget';
+import { SectorTreemapD3 } from './SectorTreemapD3';
 import { formatCurrency, formatLargeNumber } from '../../utils/marketEngine';
+import { useAuth } from '../../context/AuthContext';
+
+const DEFAULT_WIDGET_CONFIGS: TrackerWidgetConfig[] = [
+  {
+    id: 'breadth_radar',
+    title: 'Market Breadth & Momentum Radar',
+    description: 'Advance/Decline dynamics, ratio, and aggregate universe momentum',
+    colSpan: 'full',
+  },
+  {
+    id: 'sector_treemap',
+    title: 'Sector & Market Cap Treemap',
+    description: 'D3 interactive market cap tree map with sector grouping, performance shading, and sector filters',
+    colSpan: 'full',
+  },
+  {
+    id: 'd3_distribution',
+    title: 'Breadth Distribution Analytics',
+    description: 'D3 quantitative return histogram, radial donut, and constituent spread',
+    colSpan: 'full',
+    isCollapsed: true,
+  },
+  {
+    id: 'detail_chart',
+    title: 'Constituent Deep-Dive Chart',
+    description: 'HD interactive candlestick/area price action, volume, and moving averages',
+    colSpan: 'full',
+  },
+  {
+    id: 'quotes_matrix',
+    title: 'Market Quotes Matrix & Screener',
+    description: 'Real-time multi-asset quotes table and card screener',
+    colSpan: 'full',
+  },
+];
+
+const STORAGE_KEY = 'stockpulse_tracker_widgets_v1';
+
 
 interface MarketTrackerProps {
   stocks: StockQuote[];
@@ -32,6 +86,8 @@ interface MarketTrackerProps {
   onNavigateToFundamentals: (symbol: string) => void;
   onAskCopilot: (prompt: string) => void;
   flashingSymbols: Record<string, 'gain' | 'loss'>;
+  selectedSectorFilter?: string | null;
+  onSelectSectorFilter?: (sector: string | null) => void;
 }
 
 export const MarketTracker: React.FC<MarketTrackerProps> = ({
@@ -45,13 +101,21 @@ export const MarketTracker: React.FC<MarketTrackerProps> = ({
   onNavigateToFundamentals,
   onAskCopilot,
   flashingSymbols,
+  selectedSectorFilter: externalSectorFilter,
+  onSelectSectorFilter: externalOnSelectSectorFilter,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<'changePercent' | 'price' | 'volume' | 'marketCap' | 'symbol'>('changePercent');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [filterType, setFilterType] = useState<'all' | 'gainers' | 'losers'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'gainers' | 'losers' | 'watchlist'>('all');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [internalSectorFilter, setInternalSectorFilter] = useState<string | null>(null);
+
+  const selectedSectorFilter = externalSectorFilter !== undefined ? externalSectorFilter : internalSectorFilter;
+  const handleSelectSector = externalOnSelectSectorFilter || setInternalSectorFilter;
+
+  const { user, userProfile, toggleWatchlist } = useAuth();
 
   // New stock form state
   const [newSymbol, setNewSymbol] = useState('');
@@ -63,6 +127,10 @@ export const MarketTracker: React.FC<MarketTrackerProps> = ({
   // Filter & sort stocks
   const filteredStocks = useMemo(() => {
     let result = [...stocks];
+
+    if (selectedSectorFilter) {
+      result = result.filter((s) => s.sector === selectedSectorFilter);
+    }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -78,6 +146,9 @@ export const MarketTracker: React.FC<MarketTrackerProps> = ({
       result = result.filter((s) => s.changePercent > 0);
     } else if (filterType === 'losers') {
       result = result.filter((s) => s.changePercent < 0);
+    } else if (filterType === 'watchlist') {
+      const starred = userProfile?.watchlist || [];
+      result = result.filter((s) => starred.includes(s.symbol.toUpperCase()));
     }
 
     result.sort((a, b) => {
@@ -94,16 +165,19 @@ export const MarketTracker: React.FC<MarketTrackerProps> = ({
     });
 
     return result;
-  }, [stocks, searchQuery, filterType, sortField, sortDirection]);
+  }, [stocks, selectedSectorFilter, searchQuery, filterType, sortField, sortDirection, userProfile?.watchlist]);
 
-  const handleSort = (field: typeof sortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('desc');
-    }
-  };
+  const handleSort = React.useCallback((field: typeof sortField) => {
+    setSortField((prevField) => {
+      if (prevField === field) {
+        setSortDirection((prevDir) => (prevDir === 'asc' ? 'desc' : 'asc'));
+        return prevField;
+      } else {
+        setSortDirection('desc');
+        return field;
+      }
+    });
+  }, []);
 
   const handleSaveCustomStock = (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,611 +216,272 @@ export const MarketTracker: React.FC<MarketTrackerProps> = ({
     setNewName('');
   };
 
-  const advancerPct = breadth.total > 0 ? (breadth.advancers / breadth.total) * 100 : 50;
+  // -------------------------------------------------------------
+  // Grid-based Drag-and-Drop State & Customization for Modules
+  // -------------------------------------------------------------
+  const [widgets, setWidgets] = useState<TrackerWidgetConfig[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as TrackerWidgetConfig[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Verify all required widget IDs exist; merge if needed
+          const existingIds = new Set(parsed.map((w) => w.id));
+          const missing = DEFAULT_WIDGET_CONFIGS.filter((w) => !existingIds.has(w.id));
+          return [...parsed, ...missing];
+        }
+      }
+    } catch {
+      // Fallback to default
+    }
+    return DEFAULT_WIDGET_CONFIGS;
+  });
+
+  // Save layout changes to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(widgets));
+    } catch (e) {
+      console.warn('Failed to save widget layout', e);
+    }
+  }, [widgets]);
+
+  // Drag and drop tracking
+  const [draggedWidgetId, setDraggedWidgetId] = useState<string | null>(null);
+  const [dragOverWidgetId, setDragOverWidgetId] = useState<string | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedWidgetId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverWidgetId !== id) {
+      setDragOverWidgetId(id);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only clear if leaving container
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const sourceId = draggedWidgetId || e.dataTransfer.getData('text/plain');
+    if (!sourceId || sourceId === targetId) {
+      setDraggedWidgetId(null);
+      setDragOverWidgetId(null);
+      return;
+    }
+
+    setWidgets((prev) => {
+      const sourceIndex = prev.findIndex((w) => w.id === sourceId);
+      const targetIndex = prev.findIndex((w) => w.id === targetId);
+      if (sourceIndex === -1 || targetIndex === -1) return prev;
+
+      const next = [...prev];
+      const [moved] = next.splice(sourceIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
+
+    setDraggedWidgetId(null);
+    setDragOverWidgetId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedWidgetId(null);
+    setDragOverWidgetId(null);
+  };
+
+  const handleMoveWidget = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= widgets.length) return;
+
+    setWidgets((prev) => {
+      const next = [...prev];
+      const temp = next[index];
+      next[index] = next[targetIndex];
+      next[targetIndex] = temp;
+      return next;
+    });
+  };
+
+  const handleToggleCollapse = (widgetId: TrackerWidgetId) => {
+    setWidgets((prev) =>
+      prev.map((w) => (w.id === widgetId ? { ...w, isCollapsed: !w.isCollapsed } : w))
+    );
+  };
+
+  const handleToggleWidth = (widgetId: TrackerWidgetId) => {
+    setWidgets((prev) =>
+      prev.map((w) => {
+        if (w.id !== widgetId) return w;
+        return {
+          ...w,
+          colSpan: w.colSpan === 'full' ? 'half' : 'full',
+        };
+      })
+    );
+  };
+
+  const handleResetLayout = () => {
+    setWidgets(DEFAULT_WIDGET_CONFIGS);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  };
+
+  const renderWidgetContent = (widgetId: TrackerWidgetId) => {
+    switch (widgetId) {
+      case 'breadth_radar':
+        return <BreadthRadarWidget breadth={breadth} currentTheme={currentTheme} />;
+      case 'sector_treemap':
+        return (
+          <SectorTreemapD3
+            stocks={stocks}
+            currentTheme={currentTheme}
+            selectedStock={selectedStock}
+            onSelectStock={setSelectedStock}
+            selectedSectorFilter={selectedSectorFilter}
+            onSelectSectorFilter={handleSelectSector}
+          />
+        );
+      case 'd3_distribution':
+        return (
+          <BreadthDistributionD3
+            stocks={stocks}
+            breadth={breadth}
+            currentTheme={currentTheme}
+            onSelectStock={setSelectedStock}
+            selectedSymbol={selectedStock?.symbol}
+          />
+        );
+      case 'detail_chart':
+        return selectedStock ? (
+          <StockDetailChart
+            stock={selectedStock}
+            currentTheme={currentTheme}
+            onClose={() => setSelectedStock(null)}
+            onNavigateToFundamentals={onNavigateToFundamentals}
+            onAskCopilot={onAskCopilot}
+          />
+        ) : null;
+      case 'quotes_matrix':
+        return (
+          <QuotesMatrixWidget
+            stocks={stocks}
+            filteredStocks={filteredStocks}
+            totalAdvancers={breadth.advancers}
+            totalDecliners={breadth.decliners}
+            currentTheme={currentTheme}
+            selectedStock={selectedStock}
+            setSelectedStock={setSelectedStock}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            filterType={filterType}
+            setFilterType={setFilterType}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            sortField={sortField}
+            sortDirection={sortDirection}
+            handleSort={handleSort}
+            flashingSymbols={flashingSymbols}
+            onOpenAddModal={() => setIsAddModalOpen(true)}
+            onNavigateToFundamentals={onNavigateToFundamentals}
+            onAskCopilot={onAskCopilot}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div id="market-tracker-view" className="space-y-6">
-      {/* 1. Market Breadth & Sentiment Radar Card */}
+    <div id="market-tracker-view" className="space-y-5">
+      {/* Minimal Module Status & Toggle Bar */}
       <div
-        id="breadth-meter-card"
-        className="rounded-2xl border p-4 sm:p-6 shadow-sm transition-all"
-        style={{
-          backgroundColor: currentTheme.cardBg,
-          borderColor: currentTheme.cardBorder,
-        }}
+        id="tracker-layout-controls"
+        className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs"
       >
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-2.5">
-            <div
-              className="p-2 rounded-xl"
-              style={{ backgroundColor: `${currentTheme.accent}20`, color: currentTheme.accent }}
-            >
-              <BarChart2 className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold" style={{ color: currentTheme.textPrimary }}>
-                Market Breadth & Momentum Radar
-              </h2>
-              <p className="text-xs" style={{ color: currentTheme.textMuted }}>
-                Real-time Advance/Decline ratio across {breadth.total} active universe constituents
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <span className="text-xs uppercase font-mono tracking-wider" style={{ color: currentTheme.textMuted }}>
-                A/D Ratio
-              </span>
-              <div
-                className="text-lg font-black font-mono"
-                style={{
-                  color: breadth.advanceDeclineRatio >= 1.0 ? currentTheme.gainColor : currentTheme.lossColor,
-                }}
-              >
-                {breadth.advanceDeclineRatio} : 1.0
-              </div>
-            </div>
-          </div>
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-xs opacity-75" style={{ color: currentTheme.textSecondary }}>
+            Market Modules
+          </span>
+          <span className="text-[11px] font-mono opacity-40">•</span>
+          <span className="text-[11px] font-mono opacity-60" style={{ color: currentTheme.textMuted }}>
+            {widgets.filter((w) => !w.isCollapsed).length} of {widgets.length} active
+          </span>
         </div>
 
-        {/* Visual Breadth Meter Bar */}
-        <div className="space-y-2">
-          <div className="h-3.5 w-full rounded-full overflow-hidden flex bg-slate-800/40 p-0.5 border" style={{ borderColor: currentTheme.cardBorder }}>
-            <div
-              className="h-full rounded-l-full transition-all duration-500 ease-out flex items-center justify-center text-[9px] font-bold text-white overflow-hidden"
-              style={{
-                width: `${advancerPct}%`,
-                backgroundColor: currentTheme.gainColor,
-              }}
-              title={`Advancers: ${breadth.advancers} (${advancerPct.toFixed(0)}%)`}
-            />
-            <div
-              className="h-full rounded-r-full transition-all duration-500 ease-out flex items-center justify-center text-[9px] font-bold text-white overflow-hidden"
-              style={{
-                width: `${100 - advancerPct}%`,
-                backgroundColor: currentTheme.lossColor,
-              }}
-              title={`Decliners: ${breadth.decliners}`}
-            />
-          </div>
-
-          <div className="flex items-center justify-between text-xs font-mono pt-1">
-            <div className="flex items-center gap-1.5" style={{ color: currentTheme.gainColor }}>
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span className="font-bold">Advancers: {breadth.advancers}</span>
-              <span className="text-[11px] opacity-75">({advancerPct.toFixed(1)}%)</span>
-            </div>
-
-            <div className="text-[11px]" style={{ color: currentTheme.textMuted }}>
-              Unchanged: {breadth.unchanged}
-            </div>
-
-            <div className="flex items-center gap-1.5" style={{ color: currentTheme.lossColor }}>
-              <TrendingDown className="w-3.5 h-3.5" />
-              <span className="font-bold">Decliners: {breadth.decliners}</span>
-              <span className="text-[11px] opacity-75">({(100 - advancerPct).toFixed(1)}%)</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Aggregate Quick Metric Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t" style={{ borderColor: currentTheme.cardBorder }}>
-          <div className="p-2.5 rounded-xl border" style={{ backgroundColor: `${currentTheme.bg}60`, borderColor: currentTheme.cardBorder }}>
-            <div className="text-[11px]" style={{ color: currentTheme.textMuted }}>Top Outperformer</div>
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-xs font-bold font-mono" style={{ color: currentTheme.textPrimary }}>
-                {breadth.topGainer.symbol}
-              </span>
-              <span className="text-xs font-bold font-mono" style={{ color: currentTheme.gainColor }}>
-                +{breadth.topGainer.changePercent.toFixed(2)}%
-              </span>
-            </div>
-          </div>
-
-          <div className="p-2.5 rounded-xl border" style={{ backgroundColor: `${currentTheme.bg}60`, borderColor: currentTheme.cardBorder }}>
-            <div className="text-[11px]" style={{ color: currentTheme.textMuted }}>Top Underperformer</div>
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-xs font-bold font-mono" style={{ color: currentTheme.textPrimary }}>
-                {breadth.topLoser.symbol}
-              </span>
-              <span className="text-xs font-bold font-mono" style={{ color: currentTheme.lossColor }}>
-                {breadth.topLoser.changePercent.toFixed(2)}%
-              </span>
-            </div>
-          </div>
-
-          <div className="p-2.5 rounded-xl border" style={{ backgroundColor: `${currentTheme.bg}60`, borderColor: currentTheme.cardBorder }}>
-            <div className="text-[11px]" style={{ color: currentTheme.textMuted }}>Aggregate Volume</div>
-            <div className="text-xs font-bold font-mono mt-1" style={{ color: currentTheme.textPrimary }}>
-              {formatLargeNumber(breadth.totalVolume)} shares
-            </div>
-          </div>
-
-          <div className="p-2.5 rounded-xl border" style={{ backgroundColor: `${currentTheme.bg}60`, borderColor: currentTheme.cardBorder }}>
-            <div className="text-[11px]" style={{ color: currentTheme.textMuted }}>Avg Movement</div>
-            <div
-              className="text-xs font-bold font-mono mt-1"
-              style={{
-                color: breadth.avgChangePercent >= 0 ? currentTheme.gainColor : currentTheme.lossColor,
-              }}
-            >
-              {breadth.avgChangePercent >= 0 ? '+' : ''}{breadth.avgChangePercent}%
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Real-Time D3.js Breadth Distribution Widget */}
-      <BreadthDistributionD3
-        stocks={stocks}
-        breadth={breadth}
-        currentTheme={currentTheme}
-        onSelectStock={setSelectedStock}
-        selectedSymbol={selectedStock?.symbol}
-      />
-
-      {/* 3. Selected Stock Interactive HD Chart */}
-      {selectedStock && (
-        <StockDetailChart
-          stock={selectedStock}
-          currentTheme={currentTheme}
-          onClose={() => setSelectedStock(null)}
-          onNavigateToFundamentals={onNavigateToFundamentals}
-          onAskCopilot={onAskCopilot}
-        />
-      )}
-
-      {/* 3. Toolbar: Search, Filters, Sort, View Modes, Add Custom Stock */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Search Box */}
-        <div className="relative flex-1 min-w-[240px] max-w-md">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: currentTheme.textMuted }} />
-          <input
-            id="stock-search-input"
-            type="text"
-            placeholder="Search symbol, company name, or sector..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-xl text-xs border outline-none transition-all shadow-xs"
-            style={{
-              backgroundColor: currentTheme.cardBg,
-              borderColor: currentTheme.cardBorder,
-              color: currentTheme.textPrimary,
-            }}
-          />
-          {searchQuery && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {widgets.map((w) => (
             <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs opacity-60 hover:opacity-100"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-
-        {/* Filter Chips & View Mode */}
-        <div className="flex items-center flex-wrap gap-2">
-          <div className="flex items-center gap-1 p-1 rounded-lg border" style={{ borderColor: currentTheme.cardBorder, backgroundColor: currentTheme.cardBg }}>
-            <button
-              id="filter-all-btn"
-              onClick={() => setFilterType('all')}
-              className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${
-                filterType === 'all' ? 'shadow-xs' : 'opacity-60 hover:opacity-100'
-              }`}
+              key={w.id}
+              onClick={() => handleToggleCollapse(w.id)}
+              className="px-2 py-0.5 rounded-md border font-mono transition-all text-[11px]"
               style={{
-                backgroundColor: filterType === 'all' ? currentTheme.accent : 'transparent',
-                color: filterType === 'all' ? '#ffffff' : currentTheme.textPrimary,
+                backgroundColor: !w.isCollapsed ? `${currentTheme.accent}15` : 'transparent',
+                borderColor: !w.isCollapsed ? `${currentTheme.accent}40` : currentTheme.cardBorder,
+                color: !w.isCollapsed ? currentTheme.accent : currentTheme.textMuted,
               }}
+              title={`Toggle ${w.title} visibility`}
             >
-              All ({stocks.length})
+              {w.title.split(' ')[0]}
             </button>
+          ))}
 
-            <button
-              id="filter-gainers-btn"
-              onClick={() => setFilterType('gainers')}
-              className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${
-                filterType === 'gainers' ? 'shadow-xs' : 'opacity-60 hover:opacity-100'
-              }`}
-              style={{
-                backgroundColor: filterType === 'gainers' ? `${currentTheme.gainColor}25` : 'transparent',
-                color: filterType === 'gainers' ? currentTheme.gainColor : currentTheme.textPrimary,
-              }}
-            >
-              Gainers ({breadth.advancers})
-            </button>
-
-            <button
-              id="filter-losers-btn"
-              onClick={() => setFilterType('losers')}
-              className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${
-                filterType === 'losers' ? 'shadow-xs' : 'opacity-60 hover:opacity-100'
-              }`}
-              style={{
-                backgroundColor: filterType === 'losers' ? `${currentTheme.lossColor}25` : 'transparent',
-                color: filterType === 'losers' ? currentTheme.lossColor : currentTheme.textPrimary,
-              }}
-            >
-              Decliners ({breadth.decliners})
-            </button>
-          </div>
-
-          {/* Table / Grid Switcher */}
-          <div className="flex items-center gap-1 p-1 rounded-lg border" style={{ borderColor: currentTheme.cardBorder, backgroundColor: currentTheme.cardBg }}>
-            <button
-              id="view-table-btn"
-              onClick={() => setViewMode('table')}
-              className={`p-1.5 rounded transition-all ${viewMode === 'table' ? 'opacity-100' : 'opacity-40'}`}
-              style={{ backgroundColor: viewMode === 'table' ? `${currentTheme.accent}20` : 'transparent' }}
-              title="Table View"
-            >
-              <List className="w-4 h-4" style={{ color: currentTheme.textPrimary }} />
-            </button>
-            <button
-              id="view-cards-btn"
-              onClick={() => setViewMode('cards')}
-              className={`p-1.5 rounded transition-all ${viewMode === 'cards' ? 'opacity-100' : 'opacity-40'}`}
-              style={{ backgroundColor: viewMode === 'cards' ? `${currentTheme.accent}20` : 'transparent' }}
-              title="Cards Grid View"
-            >
-              <Grid className="w-4 h-4" style={{ color: currentTheme.textPrimary }} />
-            </button>
-          </div>
-
-          {/* Add Custom Stock Button */}
           <button
-            id="add-custom-stock-btn"
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white shadow-sm transition-transform hover:scale-102 active:scale-98"
-            style={{ backgroundColor: currentTheme.accent }}
+            onClick={handleResetLayout}
+            className="px-2 py-0.5 rounded-md border font-mono transition-all text-[11px] opacity-40 hover:opacity-100"
+            style={{
+              borderColor: currentTheme.cardBorder,
+              color: currentTheme.textMuted,
+            }}
+            title="Reset to default dashboard modules"
           >
-            <Plus className="w-4 h-4" />
-            <span>Add Stock</span>
+            Reset
           </button>
         </div>
       </div>
 
-      {/* 4. Stock Table View */}
-      {viewMode === 'table' && (
-        <div
-          id="stock-quotes-table-container"
-          className="rounded-2xl border overflow-hidden shadow-sm transition-all"
-          style={{
-            backgroundColor: currentTheme.cardBg,
-            borderColor: currentTheme.cardBorder,
-          }}
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b" style={{ borderColor: currentTheme.cardBorder, backgroundColor: `${currentTheme.bg}60` }}>
-                  <th
-                    className="p-3.5 font-bold cursor-pointer select-none"
-                    style={{ color: currentTheme.textSecondary }}
-                    onClick={() => handleSort('symbol')}
-                  >
-                    <div className="flex items-center gap-1">
-                      <span>Ticker & Asset</span>
-                      <ArrowUpDown className="w-3 h-3 opacity-60" />
-                    </div>
-                  </th>
-                  <th
-                    className="p-3.5 font-bold text-right cursor-pointer select-none"
-                    style={{ color: currentTheme.textSecondary }}
-                    onClick={() => handleSort('price')}
-                  >
-                    <div className="flex items-center justify-end gap-1">
-                      <span>Price</span>
-                      <ArrowUpDown className="w-3 h-3 opacity-60" />
-                    </div>
-                  </th>
-                  <th
-                    className="p-3.5 font-bold text-right cursor-pointer select-none"
-                    style={{ color: currentTheme.textSecondary }}
-                    onClick={() => handleSort('changePercent')}
-                  >
-                    <div className="flex items-center justify-end gap-1">
-                      <span>24h Change</span>
-                      <ArrowUpDown className="w-3 h-3 opacity-60" />
-                    </div>
-                  </th>
-                  <th className="p-3.5 font-bold text-center hidden md:table-cell" style={{ color: currentTheme.textSecondary }}>
-                    Intraday Sparkline
-                  </th>
-                  <th
-                    className="p-3.5 font-bold text-right hidden sm:table-cell cursor-pointer select-none"
-                    style={{ color: currentTheme.textSecondary }}
-                    onClick={() => handleSort('volume')}
-                  >
-                    <div className="flex items-center justify-end gap-1">
-                      <span>Volume</span>
-                      <ArrowUpDown className="w-3 h-3 opacity-60" />
-                    </div>
-                  </th>
-                  <th
-                    className="p-3.5 font-bold text-right hidden lg:table-cell cursor-pointer select-none"
-                    style={{ color: currentTheme.textSecondary }}
-                    onClick={() => handleSort('marketCap')}
-                  >
-                    <div className="flex items-center justify-end gap-1">
-                      <span>Market Cap</span>
-                      <ArrowUpDown className="w-3 h-3 opacity-60" />
-                    </div>
-                  </th>
-                  <th className="p-3.5 font-bold text-right hidden xl:table-cell" style={{ color: currentTheme.textSecondary }}>
-                    P/E
-                  </th>
-                  <th className="p-3.5 font-bold text-center" style={{ color: currentTheme.textSecondary }}>
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y" style={{ borderColor: currentTheme.cardBorder }}>
-                {filteredStocks.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="p-8 text-center" style={{ color: currentTheme.textMuted }}>
-                      No stocks found matching "{searchQuery}". Click "+ Add Stock" to track custom assets.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredStocks.map((stock) => {
-                    const isGain = stock.change >= 0;
-                    const flash = flashingSymbols[stock.symbol];
-                    const isSelected = selectedStock?.symbol === stock.symbol;
+      {/* Grid of Dynamic Widgets */}
+      <div className="grid grid-cols-12 gap-5">
+        {widgets.map((widget, index) => {
+          // If it is the selectedStock detail card and no stock is selected, don't show empty container
+          if (widget.id === 'detail_chart' && !selectedStock) {
+            return null;
+          }
 
-                    return (
-                      <tr
-                        key={stock.symbol}
-                        id={`stock-row-${stock.symbol}`}
-                        onClick={() => setSelectedStock(stock)}
-                        className={`group cursor-pointer transition-all duration-300 ${
-                          isSelected ? 'bg-white/10' : 'hover:bg-white/5'
-                        } ${
-                          flash === 'gain'
-                            ? 'bg-emerald-500/20'
-                            : flash === 'loss'
-                            ? 'bg-rose-500/20'
-                            : ''
-                        }`}
-                      >
-                        {/* Ticker & Name */}
-                        <td className="p-3.5">
-                          <div className="flex items-center gap-2.5">
-                            <div
-                              className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs border shrink-0"
-                              style={{
-                                backgroundColor: `${currentTheme.accent}10`,
-                                borderColor: `${currentTheme.accent}30`,
-                                color: currentTheme.accent,
-                              }}
-                            >
-                              {stock.symbol.slice(0, 3)}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-bold font-mono text-xs sm:text-sm" style={{ color: currentTheme.textPrimary }}>
-                                  {stock.symbol}
-                                </span>
-                                {stock.isCustom && (
-                                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-medium">
-                                    Custom
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-[11px] truncate max-w-[150px] sm:max-w-[200px]" style={{ color: currentTheme.textMuted }}>
-                                {stock.name}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Price */}
-                        <td className="p-3.5 text-right font-mono font-bold text-xs sm:text-sm" style={{ color: currentTheme.textPrimary }}>
-                          {formatCurrency(stock.price, stock.currency)}
-                        </td>
-
-                        {/* 24h Change */}
-                        <td className="p-3.5 text-right">
-                          <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold font-mono"
-                            style={{
-                              backgroundColor: isGain ? `${currentTheme.gainColor}18` : `${currentTheme.lossColor}18`,
-                              color: isGain ? currentTheme.gainColor : currentTheme.lossColor,
-                            }}
-                          >
-                            {isGain ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                            {isGain ? '+' : ''}{stock.changePercent.toFixed(2)}%
-                          </span>
-                        </td>
-
-                        {/* Mini Sparkline */}
-                        <td className="p-3.5 text-center hidden md:table-cell">
-                          <div className="w-24 h-7 mx-auto">
-                            <svg viewBox="0 0 100 30" className="w-full h-full overflow-visible">
-                              {(() => {
-                                const pts = stock.sparkline;
-                                if (!pts || pts.length < 2) return null;
-                                const min = Math.min(...pts);
-                                const max = Math.max(...pts);
-                                const range = max - min || 1;
-                                const polyPts = pts
-                                  .map((val, idx) => {
-                                    const x = (idx / (pts.length - 1)) * 100;
-                                    const y = 28 - ((val - min) / range) * 24;
-                                    return `${x},${y}`;
-                                  })
-                                  .join(' ');
-                                return (
-                                  <polyline
-                                    fill="none"
-                                    stroke={isGain ? currentTheme.gainColor : currentTheme.lossColor}
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    points={polyPts}
-                                  />
-                                );
-                              })()}
-                            </svg>
-                          </div>
-                        </td>
-
-                        {/* Volume */}
-                        <td className="p-3.5 text-right font-mono hidden sm:table-cell" style={{ color: currentTheme.textSecondary }}>
-                          {formatLargeNumber(stock.volume)}
-                        </td>
-
-                        {/* Market Cap */}
-                        <td className="p-3.5 text-right font-mono font-medium hidden lg:table-cell" style={{ color: currentTheme.textSecondary }}>
-                          {stock.marketCapFormatted}
-                        </td>
-
-                        {/* P/E Ratio */}
-                        <td className="p-3.5 text-right font-mono hidden xl:table-cell" style={{ color: currentTheme.textMuted }}>
-                          {stock.peRatio ? `${stock.peRatio.toFixed(1)}x` : '-'}
-                        </td>
-
-                        {/* Action Buttons */}
-                        <td className="p-3.5 text-center">
-                          <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={() => onNavigateToFundamentals(stock.symbol)}
-                              className="p-1.5 rounded-lg border hover:bg-white/10 transition-colors"
-                              style={{ borderColor: currentTheme.cardBorder }}
-                              title="View Fundamentals Research"
-                            >
-                              <Layers className="w-3.5 h-3.5" style={{ color: currentTheme.textSecondary }} />
-                            </button>
-
-                            <button
-                              onClick={() => onAskCopilot(`Analyze key drivers and risk profile for ${stock.name} (${stock.symbol})`)}
-                              className="p-1.5 rounded-lg border hover:bg-white/10 transition-colors"
-                              style={{ borderColor: currentTheme.cardBorder }}
-                              title="Ask AI Copilot"
-                            >
-                              <Bot className="w-3.5 h-3.5" style={{ color: currentTheme.accent }} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* 5. Stock Cards Grid View */}
-      {viewMode === 'cards' && (
-        <div id="stock-cards-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredStocks.map((stock) => {
-            const isGain = stock.change >= 0;
-            const flash = flashingSymbols[stock.symbol];
-            const isSelected = selectedStock?.symbol === stock.symbol;
-
-            return (
-              <div
-                key={stock.symbol}
-                onClick={() => setSelectedStock(stock)}
-                className={`rounded-2xl border p-4 cursor-pointer transition-all duration-300 relative overflow-hidden shadow-xs hover:shadow-md ${
-                  isSelected ? 'ring-2' : ''
-                } ${
-                  flash === 'gain'
-                    ? 'bg-emerald-500/20'
-                    : flash === 'loss'
-                    ? 'bg-rose-500/20'
-                    : ''
-                }`}
-                style={{
-                  backgroundColor: currentTheme.cardBg,
-                  borderColor: isSelected ? currentTheme.accent : currentTheme.cardBorder,
-                  ...(isSelected ? { ringColor: currentTheme.accent } : {}),
-                }}
-              >
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <h3 className="text-base font-extrabold font-mono" style={{ color: currentTheme.textPrimary }}>
-                        {stock.symbol}
-                      </h3>
-                      {stock.isCustom && (
-                        <span className="text-[10px] px-1 rounded bg-amber-500/20 text-amber-300">Custom</span>
-                      )}
-                    </div>
-                    <p className="text-xs truncate max-w-[170px]" style={{ color: currentTheme.textMuted }}>
-                      {stock.name}
-                    </p>
-                  </div>
-
-                  <span
-                    className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-xs font-bold font-mono"
-                    style={{
-                      backgroundColor: isGain ? `${currentTheme.gainColor}20` : `${currentTheme.lossColor}20`,
-                      color: isGain ? currentTheme.gainColor : currentTheme.lossColor,
-                    }}
-                  >
-                    {isGain ? '+' : ''}{stock.changePercent.toFixed(2)}%
-                  </span>
-                </div>
-
-                {/* Price & Day Range */}
-                <div className="mb-3">
-                  <div className="text-xl font-black font-mono" style={{ color: currentTheme.textPrimary }}>
-                    {formatCurrency(stock.price, stock.currency)}
-                  </div>
-                  <div className="text-[11px] mt-0.5" style={{ color: currentTheme.textMuted }}>
-                    Range: {stock.low.toFixed(1)} - {stock.high.toFixed(1)}
-                  </div>
-                </div>
-
-                {/* Sparkline Canvas */}
-                <div className="h-10 w-full my-2">
-                  <svg viewBox="0 0 100 30" className="w-full h-full overflow-visible">
-                    {(() => {
-                      const pts = stock.sparkline;
-                      if (!pts || pts.length < 2) return null;
-                      const min = Math.min(...pts);
-                      const max = Math.max(...pts);
-                      const range = max - min || 1;
-                      const polyPts = pts
-                        .map((val, idx) => {
-                          const x = (idx / (pts.length - 1)) * 100;
-                          const y = 28 - ((val - min) / range) * 24;
-                          return `${x},${y}`;
-                        })
-                        .join(' ');
-                      return (
-                        <polyline
-                          fill="none"
-                          stroke={isGain ? currentTheme.gainColor : currentTheme.lossColor}
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          points={polyPts}
-                        />
-                      );
-                    })()}
-                  </svg>
-                </div>
-
-                {/* Card Quick Metrics */}
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t text-[11px] font-mono" style={{ borderColor: currentTheme.cardBorder }}>
-                  <div>
-                    <span style={{ color: currentTheme.textMuted }}>Cap: </span>
-                    <span style={{ color: currentTheme.textSecondary }}>{stock.marketCapFormatted}</span>
-                  </div>
-                  <div className="text-right">
-                    <span style={{ color: currentTheme.textMuted }}>Vol: </span>
-                    <span style={{ color: currentTheme.textSecondary }}>{formatLargeNumber(stock.volume)}</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+          return (
+            <WidgetContainer
+              key={widget.id}
+              widget={widget}
+              index={index}
+              totalWidgets={widgets.length}
+              currentTheme={currentTheme}
+              isDragging={draggedWidgetId === widget.id}
+              isDragOver={dragOverWidgetId === widget.id}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onDragEnd={handleDragEnd}
+              onMoveUp={() => handleMoveWidget(index, 'up')}
+              onMoveDown={() => handleMoveWidget(index, 'down')}
+              onToggleCollapse={() => handleToggleCollapse(widget.id)}
+              onToggleWidth={() => handleToggleWidth(widget.id)}
+            >
+              {renderWidgetContent(widget.id)}
+            </WidgetContainer>
+          );
+        })}
+      </div>
 
       {/* 6. Modal: Add Custom Stock Ticker */}
       {isAddModalOpen && (

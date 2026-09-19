@@ -11,8 +11,11 @@ import {
   Terminal,
   Layers,
   ArrowRight,
+  Globe,
+  ExternalLink,
+  Search,
 } from 'lucide-react';
-import { MarketUniverseId, StockQuote, ThemeConfig } from '../../types';
+import { MarketUniverseId, StockQuote, ThemeConfig, GroundingSource } from '../../types';
 
 interface Message {
   id: string;
@@ -21,6 +24,7 @@ interface Message {
   timestamp: string;
   modelUsed?: string;
   latencyMs?: number;
+  groundingSources?: GroundingSource[];
 }
 
 interface AICopilotProps {
@@ -116,8 +120,9 @@ I am your institutional financial intelligence partner and autonomous testing as
         sender: 'copilot',
         text: data.message || 'Analysis generated successfully.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        modelUsed: data.modelUsed || 'gemini-3.8-flash',
+        modelUsed: data.modelUsed || 'gemini-3.5-flash (Google Search Grounded)',
         latencyMs: data.latencyMs || 220,
+        groundingSources: data.groundingSources || [],
       };
 
       setMessages((prev) => [...prev, botMessage]);
@@ -193,8 +198,9 @@ Unable to reach server endpoint. Operating in client-side quantitative mode.
               <h2 className="text-base font-bold" style={{ color: currentTheme.textPrimary }}>
                 StockPulse Financial Copilot
               </h2>
-              <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-sky-500/20 text-sky-400">
-                Gemini 3.8 Flash
+              <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-sky-500/20 text-sky-400 flex items-center gap-1">
+                <Globe className="w-3 h-3" />
+                Gemini 3.5 Flash + Google Search Grounded
               </span>
             </div>
             <p className="text-xs" style={{ color: currentTheme.textMuted }}>
@@ -289,6 +295,34 @@ Unable to reach server endpoint. Operating in client-side quantitative mode.
                     return <p key={bIdx}>{block}</p>;
                   })}
                 </div>
+
+                {/* Google Search Grounding Sources UI */}
+                {msg.groundingSources && msg.groundingSources.length > 0 && (
+                  <div
+                    className="mt-3 pt-2.5 border-t space-y-1.5"
+                    style={{ borderColor: currentTheme.cardBorder }}
+                  >
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-sky-400">
+                      <Search className="w-3 h-3" />
+                      <span>Google Search Grounding Sources:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {msg.groundingSources.map((source, sIdx) => (
+                        <a
+                          key={sIdx}
+                          href={source.uri}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-sky-500/15 border border-sky-500/30 text-sky-300 hover:bg-sky-500/25 transition-colors"
+                        >
+                          <Globe className="w-2.5 h-2.5" />
+                          <span className="max-w-[200px] truncate">{source.title || source.uri}</span>
+                          <ExternalLink className="w-2.5 h-2.5 opacity-70" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Metadata timestamp & latency */}
                 <div
