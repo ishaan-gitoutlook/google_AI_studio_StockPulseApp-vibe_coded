@@ -103,12 +103,32 @@ const aiCopilotLimiter = rateLimit({
 });
 app.use('/api/v1/chat', aiCopilotLimiter);
 
+// Helper to clean, trim, and detect dummy placeholder Gemini API keys
+function getCleanGeminiApiKey(): string {
+  const rawKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
+  const cleaned = rawKey.trim().replace(/^["']|["']$/g, '').trim();
+  const placeholders = [
+    'my_gemini_api_key',
+    'your_api_key',
+    'your_gemini_api_key',
+    'your_google_ai_studio_key_here',
+    'placeholder',
+    'none',
+    'null',
+    '<api_key>',
+  ];
+  if (placeholders.includes(cleaned.toLowerCase())) {
+    return '';
+  }
+  return cleaned;
+}
+
 // Lazy-initialized Gemini AI Client
 let aiClient: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI | null {
   if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey && apiKey !== 'MY_GEMINI_API_KEY') {
+    const apiKey = getCleanGeminiApiKey();
+    if (apiKey) {
       aiClient = new GoogleGenAI({ apiKey });
     }
   }
@@ -185,7 +205,7 @@ app.get('/health', async (req: Request, res: Response) => {
     capabilities: {
       pythonFastAPI: 'supported (port 8000)',
       marketData: 'active',
-      geminiCopilot: Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY'),
+      geminiCopilot: Boolean(getCleanGeminiApiKey()),
       playwrightQA: 'active',
       modelContextProtocol: 'v1.0-compliant',
     },

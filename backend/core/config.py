@@ -10,6 +10,26 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _sanitize_api_key(key: str) -> str:
+    """Strips quotes, whitespace, and detects placeholder strings."""
+    if not key:
+        return ""
+    cleaned = key.strip().strip("\"'").strip()
+    placeholders = {
+        "my_gemini_api_key",
+        "your_api_key",
+        "your_gemini_api_key",
+        "your_google_ai_studio_key_here",
+        "placeholder",
+        "none",
+        "null",
+        "<api_key>",
+    }
+    if cleaned.lower() in placeholders:
+        return ""
+    return cleaned
+
+
 class Settings:
     PROJECT_NAME: str = "StockPulse"
     VERSION: str = "1.3.0-enterprise"
@@ -23,8 +43,10 @@ class Settings:
     # API Prefix
     API_V1_STR: str = "/api/v1"
 
-    # AI Copilot Keys
-    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    # AI Copilot Keys (supports GEMINI_API_KEY, GOOGLE_API_KEY, and VITE_GEMINI_API_KEY)
+    GEMINI_API_KEY: str = _sanitize_api_key(
+        os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or os.getenv("VITE_GEMINI_API_KEY") or ""
+    )
     DEFAULT_GEMINI_MODEL: str = "gemini-2.5-flash"
     FALLBACK_GEMINI_MODEL: str = "gemini-2.0-flash"
 

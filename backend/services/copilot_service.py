@@ -13,7 +13,7 @@ _client = None
 
 def get_genai_client():
     global _client
-    if _client is None and settings.GEMINI_API_KEY and settings.GEMINI_API_KEY != "MY_GEMINI_API_KEY":
+    if _client is None and settings.GEMINI_API_KEY:
         try:
             from google import genai
             _client = genai.Client(api_key=settings.GEMINI_API_KEY)
