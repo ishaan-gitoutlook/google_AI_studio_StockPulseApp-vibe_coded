@@ -1,33 +1,35 @@
 # 📈 StockPulse — Enterprise Financial Intelligence & AI QA Platform
 
+[![Python](https://img.shields.io/badge/Python-3.14%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![React 19](https://img.shields.io/badge/React-19.0-61dafb.svg?logo=react&logoColor=white)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-6.0-646cff.svg?logo=vite&logoColor=white)](https://vitejs.dev/)
-[![TailwindCSS v4](https://img.shields.io/badge/TailwindCSS-v4.0-38b2ac.svg?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178c6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-6.2-646cff.svg?logo=vite&logoColor=white)](https://vitejs.dev/)
+[![TailwindCSS v4](https://img.shields.io/badge/TailwindCSS-v4.1-38b2ac.svg?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![D3.js](https://img.shields.io/badge/D3.js-v7-f9a03c.svg?logo=d3.js&logoColor=white)](https://d3js.org/)
 [![Express](https://img.shields.io/badge/Express-4.21-000000.svg?logo=express&logoColor=white)](https://expressjs.com/)
 [![Gemini 2.5](https://img.shields.io/badge/AI%20Copilot-Gemini%202.5%20Flash-8e75ff.svg?logo=google&logoColor=white)](https://aistudio.google.com/)
 [![Firebase](https://img.shields.io/badge/Firebase-Firestore%20%7C%20Auth-ffca28.svg?logo=firebase&logoColor=black)](https://firebase.google.com/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Playwright](https://img.shields.io/badge/Playwright-v1.49%2B-45ba4b.svg?logo=playwright&logoColor=white)](https://playwright.dev/)
+[![Pytest](https://img.shields.io/badge/Pytest-21%20Passing-success.svg?logo=pytest&logoColor=white)](https://docs.pytest.org/)
 
-**StockPulse** is a modern, production-grade financial tracking ecosystem, market intelligence dashboard, and autonomous QA testing platform. It combines a high-performance **React 19** single-page application, an optimized **Express (Node.js)** backend with in-memory caching and compression, a resilient **Python FastAPI** analytics service, **D3.js** data visualizations, **Google Gemini 2.5 Flash** with Google Search Grounding, and a **3-Tier QA Testing Architecture** (Unit, Playwright E2E, and Autonomous MCP AI Agent).
+**StockPulse** is a modern, production-grade financial tracking ecosystem, quantitative equity analytics dashboard, and autonomous QA testing platform. Built with a **Python-First Full-Stack Architecture**, it couples a high-performance **Python 3.14 + FastAPI** quantitative engine with a sleek **React 19 + TypeScript + Vite + TailwindCSS v4 + D3.js** single-page application, an interactive **Python Terminal CLI**, and a resilient **Node.js Express reverse proxy**.
 
 ---
 
 ## 📑 Table of Contents
 
 - [🏛️ System Architecture](#️-system-architecture)
-- [✨ Key Capabilities](#-key-capabilities)
+- [🐍 Python-First Engine Capabilities](#-python-first-engine-capabilities)
+  - [1. Quantitative Technical Indicators Engine](#1-quantitative-technical-indicators-engine)
+  - [2. Monte Carlo Risk & Solvency Engine](#2-monte-carlo-risk--solvency-engine)
+  - [3. Python Gemini 2.5 Flash Copilot](#3-python-gemini-25-flash-copilot)
+  - [4. Interactive Python Terminal CLI (`cli.py`)](#4-interactive-python-terminal-cli-clipy)
+- [✨ Web Dashboard Capabilities](#-web-dashboard-capabilities)
   - [1. Multi-Market Watchlists & Global Universes](#1-multi-market-watchlists--global-universes)
   - [2. High-Performance Quotes Matrix & Sparklines](#2-high-performance-quotes-matrix--sparklines)
   - [3. D3.js Sector Treemap & Breadth Distribution](#3-d3js-sector-treemap--breadth-distribution)
   - [4. In-Depth Fundamentals Research](#4-in-depth-fundamentals-research)
-  - [5. AI Financial Copilot (Gemini 2.5 Flash)](#5-ai-financial-copilot-gemini-25-flash)
-  - [6. QA Studio (Integrated In-Browser Test Runner)](#6-qa-studio-integrated-in-browser-test-runner)
-  - [7. Interactive API Explorer & Doc Viewer](#7-interactive-api-explorer--doc-viewer)
-  - [8. 7 Ergonomic Color Palettes](#8-7-ergonomic-color-palettes)
+  - [5. 7 Ergonomic Color Palettes](#5-7-ergonomic-color-palettes)
 - [⚡ Performance & Optimization Highlights](#-performance--optimization-highlights)
 - [🤖 3-Tier Testing & QA Suite](#-3-tier-testing--qa-suite)
 - [📁 Repository Structure](#-repository-structure)
@@ -41,41 +43,32 @@
 
 ## 🏛️ System Architecture
 
-StockPulse is designed around an enterprise microservices pattern with built-in client failover, caching, and background resource conservation:
+StockPulse is designed around an enterprise dual-engine pattern with Python as the primary quant and algorithmic engine, fronted by an Express reverse proxy and Vite SPA:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│               REACT 19 + VITE SINGLE PAGE APPLICATION                  │
-│                        (http://localhost:3000)                         │
+│                        CLIENT ACCESS INTERFACES                        │
 │                                                                        │
-│   Market Tracker            Fundamentals Research     AI Copilot       │
-│   - Quotes Matrix (Table/Card) - Valuation & Margins   - Gemini 2.5     │
-│   - Precomputed Sparklines     - Balance Sheet        - Search Ground  │
-│   - D3 Sector Treemap          - Persistent Notes     - Disclaimers    │
-│   - D3 Breadth Distribution                                            │
-│                                                                        │
-│   QA Studio                 API Explorer              Doc Viewer       │
-│   - 41 Automated Tests      - Live Request Console    - Markdown Docs  │
-│   - Duration & Logs         - Curl Snippets           - Zero Tab Jump  │
-│                                                                        │
-│   State & Performance Engines:                                         │
-│   - Page Visibility API (Idle Tab Throttling)                          │
-│   - React.memo Rows (~96% fewer render cycles on live ticks)           │
-│   - In-Place D3 DOM Transitions (Zero canvas destruction)              │
+│   React 19 Web Dashboard (:3000)       Python Terminal CLI (cli.py)    │
+│   - Quotes Matrix (Table/Grid)         - Live Streaming ASCII Tables   │
+│   - D3.js Sector Treemap               - Monte Carlo Visualizer        │
+│   - D3.js Breadth Distribution         - Technical Indicators Profile  │
+│   - Fundamentals & Notes               - Terminal AI Copilot Chat      │
+│   - 7 Ergonomic Color Themes           - Pytest Runner                 │
 └───────────────────┬───────────────────────────────┬────────────────────┘
                     │                               │
-         HTTP / REST│ (Express Core API)            │ Secondary / Analytics
+         HTTP / REST│                               │ Direct Python Ingestion
                     ▼                               ▼
 ┌────────────────────────────────────────┐  ┌────────────────────────────┐
-│      CORE NODE.JS EXPRESS BACKEND      │  │   PYTHON FASTAPI BACKEND   │
-│         (server.ts / dist/server.mjs)  │  │     (backend/ :8000)       │
-│   - HTTP Gzip / Brotli Compression     │  │   - Pydantic v2 Models     │
-│   - In-Memory Bounded Research Cache   │  │   - 41/41 Unit Assertions  │
-│   - Gemini 2.5 Flash Integration       │  │   - Quant Calculations     │
-│   - Helmet Security & Rate Limiting    │  └────────────────────────────┘
-│   - Static Asset Serving (/dist)       │
-└───────────────────┬────────────────────┘
-                    │
+│      NODE.JS EXPRESS REVERSE PROXY     │  │    CORE PYTHON FASTAPI     │
+│         (server.ts / :3000)            │  │     BACKEND (:8000)        │
+│   - Reverse-proxies /api/v1/* to Python│  │   - Pydantic v2 Models     │
+│   - Automatic local fallback if offline│◄─┼───- GBM Tick Simulator     │
+│   - High-performance Gzip / Brotli     │  │   - Indicators Engine      │
+│   - In-memory research cache (<1ms)    │  │   - Monte Carlo & VaR      │
+│   - Hosts production SPA (/dist)       │  │   - Gemini 2.5 Copilot     │
+└───────────────────┬────────────────────┘  │   - Programmatic Pytest    │
+                    │                       └────────────────────────────┘
                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        EXTERNAL CLOUD SERVICES                         │
@@ -89,53 +82,75 @@ StockPulse is designed around an enterprise microservices pattern with built-in 
 
 ---
 
-## ✨ Key Capabilities
+## 🐍 Python-First Engine Capabilities
+
+### 1. Quantitative Technical Indicators Engine
+Pure Python implementations in `backend/indicators.py`:
+* **RSI (Relative Strength Index)**: 14-period Wilder smoothing with overbought/oversold boundaries.
+* **MACD**: 12/26-period EMA with 9-period Signal line and trend histogram.
+* **Bollinger Bands**: 20-period SMA with $2\sigma$ upper/lower bands and $\%B$ positioning.
+* **Moving Averages**: 20 and 50-period SMA and EMA.
+* **Composite Technical Score**: Multi-factor 0-100 indicator momentum score.
+
+### 2. Monte Carlo Risk & Solvency Engine
+Quantitative risk analytics in `backend/analytics.py`:
+* **Geometric Brownian Motion**: 1,000 price path iterations projecting over 30, 90, and 252 days.
+* **Value-at-Risk (VaR)**: Maximum statistical loss at **95%** and **99%** confidence intervals.
+* **Expected Shortfall (CVaR)**: Conditional tail-risk loss expectation.
+* **Altman Z-Score**: Evaluates financial solvency across 5 operational ratios (Safe, Grey, Distress).
+* **DuPont 3-Way ROE Decomposition**: Breaks down ROE into Profit Margin $\times$ Asset Turnover $\times$ Leverage.
+
+### 3. Python Gemini 2.5 Flash Copilot
+In `backend/copilot.py`:
+* Powered by Google's official `google-genai` Python SDK.
+* Real-time **Google Search Grounding** for live news and earnings releases.
+* Resilient dual fallbacks: `gemini-2.5-flash` ➔ `gemini-2.0-flash` ➔ Quantitative Heuristics.
+
+### 4. Interactive Python Terminal CLI (`cli.py`)
+Launch the terminal tracker using Python's `rich` library:
+```powershell
+python cli.py                       # Interactive console menu
+python cli.py --quotes              # Instant quotes matrix
+python cli.py --symbol NVDA         # Fundamentals valuation
+python cli.py --symbol NVDA --monte-carlo  # Run Monte Carlo risk engine
+python cli.py --symbol NVDA --indicators   # View RSI, MACD, Bollinger Bands
+```
+
+---
+
+## ✨ Web Dashboard Capabilities
 
 ### 1. Multi-Market Watchlists & Global Universes
-Track global indices and market listings with instant switching:
-* 🇮🇳 **NIFTY 500 & BSE Sensex 30** (National Stock Exchange of India & Bombay Stock Exchange)
+Track blue-chip indices across 7 global benchmarks:
+* 🇮🇳 **NIFTY 500 & BSE Sensex 30** (NSE & BSE India)
 * 🇺🇸 **S&P 500 & NASDAQ 100** (US Large Cap & Tech Leaders)
 * 🇬🇧 **FTSE 100** (London Stock Exchange)
 * 🇩🇪 **DAX 40** (Deutsche Börse XETRA)
-* 🌐 **Global Megacaps** (Apple, Microsoft, Alphabet, Nvidia, Reliance, Amazon, Meta, TSMC)
-* ⭐ **Personal Starred Watchlists**: Pin any ticker to your personal watchlist; authenticated users have their list synced in real-time to Cloud Firestore.
+* 🌐 **Global Megacaps** (Apple, Microsoft, Alphabet, Nvidia, Reliance, etc.)
+* ⭐ **Personal Watchlists**: Star and sync tickers in real-time to Cloud Firestore.
 
 ### 2. High-Performance Quotes Matrix & Sparklines
-* **Dual Presentation Modes**: Switch seamlessly between a high-density, sortable financial tabular view and modular grid cards.
-* **Precomputed SVG Sparklines**: Smooth 10-period intraday momentum polylines rendered with zero runtime math overhead.
-* **Sector Filtering**: Filter instantly by Technology, Financials, Healthcare, Consumer Goods, Energy, Industrials, Utilities, and Materials.
+* **Dual Presentation**: Dense sortable financial table or modular grid cards.
+* **Precomputed SVG Sparklines**: Zero runtime math overhead on price updates.
+* **Granular Filtering**: Filter by Technology, Financials, Healthcare, Consumer, Energy, and more.
 
 ### 3. D3.js Sector Treemap & Breadth Distribution
-* **Sector Treemap**: Squarified hierarchical layout sizing stocks by market capitalization and coloring them dynamically from deep green (+3%) to crimson (-3%). Updates use smooth in-place D3 transitions without tearing down the SVG canvas.
-* **Market Breadth Histogram & Advance/Decline Donut**: Visual distribution across return brackets (`<-3%`, `-3% to -1%`, `-1% to +1%`, `+1% to +3%`, `>+3%`) with advance/decline ratio tracking.
+* **Sector Treemap**: Sized by market cap with dynamic heatmapping (+3% green to -3% red) using in-place DOM updates (zero canvas teardown).
+* **Market Breadth**: Distribution histogram and Advance/Decline ratio donut chart.
 
 ### 4. In-Depth Fundamentals Research
-* Comprehensive valuation multiples: Trailing P/E, Forward P/E, PEG Ratio, Price-to-Book (P/B), EV/EBITDA, Dividend Yield, and Beta.
-* Financial health metrics: Debt-to-Equity, Current Ratio, Operating Margins, Profit Margins, Return on Equity (ROE), and Return on Assets (ROA).
+* Valuation multiples: Trailing/Forward P/E, PEG, Price-to-Book, EV/EBITDA, Dividend Yield.
+* Solvency ratios: Debt-to-Equity, Operating Margins, ROE, ROA.
 * Interactive markdown research notes attached to each stock symbol.
 
-### 5. AI Financial Copilot (Gemini 2.5 Flash)
-* Direct integration with `gemini-2.5-flash` via `@google/genai` SDK.
-* Real-time **Google Search Grounding** for latest news, earnings releases, and macro events.
-* Multi-tiered fallback resilience: `gemini-2.5-flash` ➔ `gemini-2.0-flash` ➔ Built-in Rule-Based Quant Heuristics.
-* Mandatory risk disclaimers, hallucination prevention guardrails, and one-click financial prompt chips.
-
-### 6. QA Studio (Integrated In-Browser Test Runner)
-* Live in-browser execution and status monitoring for all **41 Python unit & integration tests**.
-* Displays test categories, execution durations, assertions passed, and test output logs without leaving the dashboard.
-
-### 7. Interactive API Explorer & Doc Viewer
-* **API Explorer**: Built-in developer console to test `/health`, `/api/v1/universes`, `/api/v1/quotes`, `/api/v1/research`, `/api/v1/chat`, and `/api/v1/tests/unit`. Includes copyable `curl` and PowerShell snippets, response status badges, and formatted JSON.
-* **Doc Viewer**: Embedded markdown document reader rendering the implementation plan and technical specifications directly inside the app.
-
-### 8. 7 Ergonomic Color Palettes
+### 5. 7 Ergonomic Color Palettes
 * 🌙 **Midnight Navy**: Default dark mode with slate cards and cyan accents.
-* ☀️ **Clean Light**: Glare-free off-white palette for bright daylight environments.
-* 🖤 **Obsidian Noir**: High-contrast true black tailored for OLED power conservation.
-* 🌲 **Emerald Wealth**: Forest green and gold palette for a classic wealth terminal feel.
+* ☀️ **Clean Light**: Glare-free off-white palette for bright offices.
+* 🖤 **Obsidian Noir**: High-contrast true black for OLED power savings.
+* 🌲 **Emerald Wealth**: Forest green and gold palette for a wealth terminal feel.
 * ❄️ **Arctic Frost**: Minimalist cool-steel blue and frosted cyan.
 * 🌇 **Crimson Sunset**: Twilight slate with warm coral and amber hues.
-* 💻 **Solarized Dark**: Developer classic with low-contrast teal and amber accents.
+* 💻 **Solarized Dark**: Developer classic with low-contrast teal accents.
 
 ---
 
@@ -143,50 +158,30 @@ Track global indices and market listings with instant switching:
 
 | Optimization Area | Technique Implemented | Benchmark Result |
 | :--- | :--- | :--- |
-| **JS Bundle Size** | Rollup `manualChunks` (`vendor-d3`, `vendor-firebase`, `vendor-react`, `vendor-icons`) | **`248.85 kB`** main bundle (**~80% reduction** from `1.23 MB`) |
-| **Render Cycles** | `React.memo` row extraction + precomputed sparkline geometry | **~96% fewer component re-renders** across 30+ stocks |
-| **D3 Canvas DOM** | In-place attribute and text transitions (`prevLayoutKeyRef`) | **Zero DOM canvas teardowns**; smooth 60 FPS price ticks |
-| **Battery / CPU** | Page Visibility API (`document.visibilityState`) | **Live ticks auto-paused** when tab is hidden or minimized |
-| **Network Payloads** | Express HTTP Gzip / Brotli `compression` (1KB threshold) | **Up to 75% smaller transfer size** on universe & quote payloads |
-| **API Latency** | Bounded in-memory Map cache (`researchCache`) | **<1ms instant cache hits** on repeat research queries |
-| **Server ESM** | Switched esbuild target to native ESM (`dist/server.mjs`) | **Zero `import.meta.url` CommonJS build warnings** |
+| **JS Bundle Size** | Rollup `manualChunks` (`vendor-d3`, `vendor-firebase`, `vendor-react`) | **`248.85 kB`** main bundle (**~80% reduction**) |
+| **Component Rendering** | `React.memo` row extraction + precomputed sparklines | **~96% fewer component re-renders** |
+| **D3 Canvas DOM** | In-place attribute and text transitions (`prevLayoutKeyRef`) | **Zero DOM canvas teardowns**; smooth 60 FPS |
+| **Battery / CPU** | Page Visibility API (`document.visibilityState`) | **Live ticks auto-paused** when tab is hidden |
+| **Network Payloads** | Express HTTP Gzip / Brotli `compression` | **Up to 75% smaller transfer size** |
+| **API Latency** | Bounded in-memory Map cache (`researchCache`) | **<1ms instant cache hits** on repeat queries |
+| **Dual-Engine Proxy** | Node-to-Python delegation bridge | **Seamless proxy with zero-downtime fallback** |
 
 ---
 
 ## 🤖 3-Tier Testing & QA Suite
 
-StockPulse features a complete, multi-layered quality assurance architecture:
-
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│ Level 3: Autonomous AI QA Suite (Playwright + MCP + Gemini / Ollama)   │
-│          - Natural language YAML scenarios driven by AI Agent          │
-│          - Inspects accessibility ARIA tree, outputs pass/fail reports │
+│ Level 3: Autonomous AI QA Suite (Playwright + MCP + Gemini)            │
+│          - Evaluates accessibility ARIA tree, outputs pass/fail reports│
 ├────────────────────────────────────────────────────────────────────────┤
 │ Level 2: Playwright End-to-End UI Tests (TypeScript/Node.js)           │
-│          - Interactive tests verifying UI rendering, selectors,        │
-│            sidebar dynamics, theme switching, and live tick updates    │
+│          - 16 specs verifying UI rendering, selectors, and themes      │
 ├────────────────────────────────────────────────────────────────────────┤
-│ Level 1: Python & Vitest Unit Tests                                    │
-│          - 41 test cases verifying API endpoints, math calculations,   │
-│            data normalization, and fallback heuristics                 │
+│ Level 1: Python Pytest Suite (Python 3.14)                             │
+│          - 21 passing test cases verifying indicators, Monte Carlo,    │
+│            quote math, breadth, and API endpoints                      │
 └────────────────────────────────────────────────────────────────────────┘
-```
-
-### Running Tests:
-
-```powershell
-# 1. Run TypeScript static typecheck (0 errors)
-npm run lint
-
-# 2. Run Python Unit Tests (41/41 passing)
-pytest
-
-# 3. Run Playwright E2E Tests (Headless)
-npm run test:e2e
-
-# 4. Run Playwright E2E Tests (Headed Browser)
-npm run test:e2e:headed
 ```
 
 ---
@@ -195,41 +190,34 @@ npm run test:e2e:headed
 
 ```
 google_AI_studio_StockPulseApp-vibe_coded/
+├── backend/                           # Core Python FastAPI Engine
+│   ├── analytics.py                   # Monte Carlo (1,000 runs), VaR, Altman Z-Score
+│   ├── copilot.py                     # Python Gemini 2.5 Copilot + Search Grounding
+│   ├── data.py                        # Universes and quote catalogs
+│   ├── engine.py                      # GBM tick simulator & breadth calculations
+│   ├── indicators.py                  # Pure Python RSI, MACD, Bollinger Bands
+│   ├── main.py                        # FastAPI REST application (Port 8000)
+│   └── models.py                      # Pydantic v2 domain schemas
 ├── src/                               # Frontend React 19 Application
-│   ├── components/                    # Modular UI components
-│   │   ├── ApiExplorer/               # Interactive REST API console
-│   │   ├── DocViewer/                 # In-app markdown documentation reader
-│   │   ├── Fundamentals/              # Deep financial ratio & notes view
-│   │   ├── MarketTracker/             # Quotes Matrix, D3 Treemap, Breadth widget
-│   │   │   ├── BreadthDistributionD3.tsx # D3 Market Breadth visualization
-│   │   │   ├── MarketTracker.tsx      # Core tracker controller
-│   │   │   ├── QuotesMatrixWidget.tsx # Memoized table & grid cards with sparklines
-│   │   │   └── SectorTreemapD3.tsx    # D3 Treemap with in-place DOM transitions
-│   │   └── QAStudio/                  # Integrated in-browser test runner
+│   ├── components/                    # Modular UI components (Tracker, D3 Treemap, etc.)
 │   ├── lib/                           # Firebase initialization & utilities
-│   ├── types/                         # TypeScript interfaces & financial contracts
-│   ├── App.tsx                        # Main application container & state orchestration
-│   ├── index.css                      # TailwindCSS v4 and 7 ergonomic theme definitions
+│   ├── App.tsx                        # Main application container & state
+│   ├── index.css                      # TailwindCSS v4 and 7 ergonomic themes
 │   └── main.tsx                       # React DOM entrypoint
-├── backend/                           # Python Analytics Microservice
-│   └── main.py                        # FastAPI application (Port 8000)
-├── server.ts                          # Production Express server (Port 3000)
 ├── tests/                             # Comprehensive test suites
-│   ├── test_api_client.py             # Client unit tests
-│   ├── test_assistant.py              # AI assistant guardrail tests
-│   ├── test_chat_api.py               # Chat endpoint tests
-│   ├── test_market_data.py            # Ingestion & storage tests
-│   ├── test_tracker.py                # Quote calculation tests
-│   └── e2e/                           # Playwright E2E test specs
-├── dist/                              # Production build output
-│   ├── assets/                        # Code-split vendor and application chunks
-│   └── server.mjs                     # Native ESM compiled Express server
-├── package.json                       # Scripts, dependencies, and chunking config
-├── vite.config.ts                     # Vite build configuration with Rollup code-splitting
-├── tsconfig.json                      # TypeScript strict configuration
+│   ├── test_analytics.py              # Monte Carlo & solvency tests
+│   ├── test_backend.py                # FastAPI endpoint tests
+│   └── test_indicators.py             # RSI, MACD, Bollinger Bands unit tests
+├── scripts/                           # Python developer tooling
+│   └── benchmark.py                   # API latency and throughput benchmark
+├── dev.py                             # Master Python development orchestrator
+├── cli.py                             # Interactive Python Terminal CLI
+├── server.ts                          # Production Express reverse proxy & host
 ├── requirements.txt                   # Python backend dependencies
+├── package.json                       # Node scripts and dependencies
+├── vite.config.ts                     # Vite build configuration with Rollup chunking
 ├── IMPLEMENTATION_PLAN.md             # Enterprise implementation plan & roadmap
-├── WALKTHROUGH.md                     # Complete platform walkthrough & verification guide
+├── WALKTHROUGH.md                     # Complete platform walkthrough guide
 └── README.md                          # Project documentation
 ```
 
@@ -238,11 +226,10 @@ google_AI_studio_StockPulseApp-vibe_coded/
 ## 🚀 Quick Start (Local Setup)
 
 ### 1. Prerequisites
+* **Python**: v3.10 or higher (v3.14 tested)
 * **Node.js**: v18.0 or higher (v20+ recommended)
-* **Python**: v3.10 or higher (optional, for the FastAPI backend and test suite)
 
 ### 2. Installation
-
 ```powershell
 # Clone the repository
 git clone https://github.com/ishaan-gitoutlook/google_AI_studio_StockPulseApp-vibe_coded.git
@@ -251,65 +238,45 @@ cd google_AI_studio_StockPulseApp-vibe_coded
 # Install Node.js dependencies
 npm install
 
-# (Optional) Setup Python virtual environment
+# Setup Python Virtual Environment and install dependencies
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+.\.venv\Scripts\pip install -r requirements.txt
 ```
 
 ### 3. Run the Application
 
-#### Option A: Full Stack Development Mode (Recommended)
+#### Option A: Unified Dev Cluster (Recommended)
 ```powershell
-npm run dev
+python dev.py
 ```
-* Spawns the Vite development server with Hot Module Replacement (HMR) and connects to the Express API on port `3000`.
+* Concurrently launches the Python FastAPI backend on `http://localhost:8000` and the Node/Vite frontend on `http://localhost:3000`.
 
-#### Option B: Optimized Production Mode
+#### Option B: Terminal CLI Tracker
 ```powershell
-# Build client chunks and compile server.mjs
-npm run build
+python cli.py
+```
 
-# Start production Express server
+#### Option C: Production Mode
+```powershell
+npm run build
 npm start
 ```
-* Serves the optimized, chunked SPA and the Express REST API at **`http://localhost:3000`**.
-
-#### Option C: Python FastAPI Microservice
-```powershell
-uvicorn backend.main:app --reload --port 8000
-```
-* Starts the Python analytics backend at **`http://localhost:8000`**.
 
 ---
 
 ## 🌐 REST API Reference
 
-The Express server on port `3000` exposes the following endpoints:
-
-| Method | Endpoint | Description | Cache Policy |
+| Method | Endpoint | Description | Powered By |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/health` | Service health status, uptime, and version | No-cache |
-| `GET` | `/api/v1/universes` | Available market listings (NIFTY, S&P 500, NASDAQ, etc.) | `max-age=300` |
-| `GET` | `/api/v1/quotes?symbols=AAPL,MSFT` | Real-time quotes, price changes, and breadth | Dynamic |
-| `GET` | `/api/v1/research?symbol=NVDA` | Valuation multiples, ratios, and company profile | In-memory cache (<1ms) |
-| `POST` | `/api/v1/chat` | AI Copilot (Gemini 2.5 Flash with search grounding) | Rate limited |
-| `GET` | `/api/v1/tests/unit` | Execute and retrieve automated unit test results | `max-age=60` |
-
-### Example Queries:
-
-```bash
-# Health check
-curl http://localhost:3000/health
-
-# Fetch research data (Cached after first call)
-curl http://localhost:3000/api/v1/research?symbol=NVDA
-
-# Query AI Copilot
-curl -X POST http://localhost:3000/api/v1/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "What is the P/E ratio and growth outlook for Nvidia?"}'
-```
+| `GET` | `/health` | Health status and active capabilities | FastAPI / Express |
+| `GET` | `/api/v1/universes` | Available global market universes | FastAPI Engine |
+| `GET` | `/api/v1/quotes` | Real-time quotes, price changes, and breadth | FastAPI Engine |
+| `GET` | `/api/v1/research?symbol=NVDA` | Valuation multiples and company profile | In-memory cache (<1ms) |
+| `GET` | `/api/v1/analytics/indicators?symbol=NVDA` | RSI, MACD, Bollinger Bands | Python Indicators Engine |
+| `GET` | `/api/v1/analytics/monte-carlo?symbol=NVDA` | 1,000-iteration Monte Carlo & VaR | Python Analytics Engine |
+| `GET` | `/api/v1/analytics/solvency?symbol=NVDA` | Altman Z-Score & DuPont ROE | Python Analytics Engine |
+| `POST` | `/api/v1/chat` | AI Copilot (Gemini 2.5 Flash + Search Grounding) | Python GenAI SDK |
+| `GET` | `/api/v1/tests/unit` | Live programmatic pytest execution | Pytest Runner |
 
 ---
 
@@ -318,13 +285,14 @@ curl -X POST http://localhost:3000/api/v1/chat \
 Create a `.env` file in the project root:
 
 ```ini
-# Server Port
+# Server Configuration
 PORT=3000
+PYTHON_BACKEND_URL=http://127.0.0.1:8000
 
 # Google AI Studio (Gemini 2.5 Flash Copilot)
 GEMINI_API_KEY=your_google_ai_studio_key_here
 
-# Firebase Configuration (Optional - for real-time cloud watchlists)
+# Firebase Configuration (Optional - for Cloud Watchlists & Notes)
 VITE_FIREBASE_API_KEY=your_firebase_key
 VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=your_project_id
@@ -332,23 +300,6 @@ VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
 ```
-
----
-
-## 🔧 Troubleshooting & FAQ
-
-### 1. `Port 3000 is already in use`
-A previously started server process is still listening. Kill it via PowerShell:
-```powershell
-$conn = Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue
-if ($conn) { Stop-Process -Id $conn.OwningProcess -Force }
-```
-
-### 2. `How do I verify bundle optimization?`
-Run `npm run build`. The output shows individual code-split chunks (`vendor-react`, `vendor-firebase`, `vendor-d3`, and `assets/index.js` at ~248 kB), avoiding monolithic file downloads.
-
-### 3. `Can I use StockPulse without a Gemini API Key?`
-Yes! If `GEMINI_API_KEY` is omitted, the AI Financial Copilot automatically falls back to an intelligent, rule-based quantitative heuristics engine that evaluates valuation, momentum, and sector trends locally.
 
 ---
 

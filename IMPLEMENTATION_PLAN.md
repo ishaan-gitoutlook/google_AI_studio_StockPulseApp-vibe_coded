@@ -1,8 +1,6 @@
 # 📈 StockPulse: Enterprise Implementation Plan & Engineering Roadmap
 
-StockPulse is a modern financial tracking ecosystem, market intelligence dashboard, and autonomous QA testing platform built with **React 19**, **TypeScript**, **Vite**, **TailwindCSS v4**, **D3.js**, **Express**, **Firebase Authentication & Cloud Firestore**, and **Google Gemini AI**.
-
-This implementation plan establishes the architectural roadmap, completed performance optimizations, and future scalability milestones.
+StockPulse is a modern financial tracking ecosystem, market intelligence dashboard, and autonomous QA testing platform built with a **Python-First Full-Stack Architecture**: **FastAPI + Python 3.14** for quantitative analytics, technical indicators, Monte Carlo risk simulation, and AI Copilot, fronted by a **React 19 + Vite + TailwindCSS v4 + D3.js** single-page application and an **Express reverse proxy**.
 
 ---
 
@@ -11,37 +9,50 @@ This implementation plan establishes the architectural roadmap, completed perfor
 ```mermaid
 graph TD
     Client["React 19 + Vite SPA (Port 3000)<br/>TailwindCSS v4 • D3.js Charts • Lucide Icons"]
-    
-    subgraph FrontendState ["Frontend State & Performance"]
-        PVis["Page Visibility API (Idle Throttling)"]
-        MemoR["React.memo Rows & Sparkline Precomputation"]
-        InPlaceD3["In-Place D3 DOM Updates (Zero Canvas Teardown)"]
-    end
-    
-    subgraph NodeBackend ["Core Express Server (server.ts / server.mjs)"]
-        Comp["HTTP Gzip / Brotli Compression"]
-        MemCache["In-Memory Map Cache (<1ms Lookup)"]
-        GeminiCopilot["Gemini 2.5 Flash + Search Grounding"]
-        SecShield["Helmet CSP • CORS • Rate Limiting (OWASP)"]
+    TerminalCLI["Python Interactive Terminal CLI (cli.py)<br/>Rich Tables • Sparklines • Copilot"]
+
+    subgraph NodeProxy ["Node.js Express Server (server.ts / dist/server.mjs)"]
+        SPAHost["Static SPA Asset Server (/dist)"]
+        ProxyForward["Python Reverse Proxy Bridge<br/>(Routes /api/v1/* to Python :8000 with Fallback)"]
     end
 
-    subgraph PythonBackend ["Python Analytics Backend (backend/ :8000)"]
-        FastAPI["FastAPI 0.110+ • Pydantic v2"]
-        Pytest["Pytest Unit Test Suite (41/41 Passing)"]
+    subgraph PythonCore ["Core Python Engine (FastAPI :8000)"]
+        FastAPIEngine["FastAPI 0.110+ • Pydantic v2"]
+        GBMEngine["GBM Tick Simulator & Market Breadth (engine.py)"]
+        IndicatorsEngine["Technical Indicators: RSI, MACD, Bollinger Bands (indicators.py)"]
+        AnalyticsEngine["Monte Carlo Simulation & VaR 95/99% (analytics.py)"]
+        CopilotEngine["Python Gemini 2.5 Flash + Search Grounding (copilot.py)"]
+        PytestRunner["Pytest Programmatic Test Runner (/api/v1/tests/unit)"]
+    end
+
+    subgraph PythonTooling ["Python Tooling & Automation"]
+        DevOrchestrator["Master Dev Orchestrator (dev.py)"]
+        BenchmarkTool["API Latency & Concurrency Benchmark (scripts/benchmark.py)"]
+        PytestSuite["21+ Assertion Unit Test Suite (tests/)"]
     end
 
     subgraph CloudServices ["Cloud Infrastructure"]
-        Firestore["Cloud Firestore (User Watchlists & Research Notes)"]
+        Firestore["Cloud Firestore (Real-time Watchlists & Research Notes)"]
         FirebaseAuth["Firebase Google Auth"]
-        GoogleSearch["Google Search Grounding Engine"]
+        GoogleSearch["Google AI Studio Search Grounding Engine"]
     end
 
-    Client --> FrontendState
-    Client --> NodeBackend
-    Client -.-> PythonBackend
+    Client --> NodeProxy
+    NodeProxy --> SPAHost
+    NodeProxy --> ProxyForward
+    ProxyForward --> FastAPIEngine
+    TerminalCLI --> FastAPIEngine
+
+    FastAPIEngine --> GBMEngine
+    FastAPIEngine --> IndicatorsEngine
+    FastAPIEngine --> AnalyticsEngine
+    FastAPIEngine --> CopilotEngine
+    FastAPIEngine --> PytestRunner
+
+    DevOrchestrator --> NodeProxy
+    DevOrchestrator --> FastAPIEngine
+    CopilotEngine --> GoogleSearch
     Client --> CloudServices
-    NodeBackend --> GoogleSearch
-    NodeBackend --> CloudServices
 ```
 
 ---
@@ -74,34 +85,38 @@ graph TD
 - [x] **Page Visibility API**: Integrated `document.visibilityState` into `App.tsx` to automatically pause tick simulation intervals when the browser tab is hidden or minimized.
 - [x] **View-Aware Throttling**: Automatically throttles live tick frequency when navigating to non-market views (QA Studio, DocViewer, ApiExplorer), conserving CPU cycles.
 
-### Phase 5: Backend Latency & Compression (Completed ✅)
-- [x] **Express HTTP Compression**: Enabled gzip/brotli `compression` with a 1KB threshold, cutting API JSON payload transfer sizes by up to 75%.
-- [x] **In-Memory Map Cache**: Implemented a bounded `researchCache` in `server.ts` for `/api/v1/research`, delivering instant `<1ms` responses on repeat queries.
-- [x] **Client-Side Cache Headers**: Added `Cache-Control` (`max-age=300, stale-while-revalidate=600`) to static metadata endpoints (`/api/v1/universes`, `/api/v1/tests/*`).
-- [x] **Gemini 2.5 Flash Integration**: Upgraded AI Copilot model to `gemini-2.5-flash` with Google Search grounding and resilient fallback to `gemini-2.0-flash` and quant heuristics.
+### Phase 5: Python-First Backend & Analytics Expansion (Completed ✅)
+- [x] **Pure Python Technical Indicators**: Built `backend/indicators.py` calculating RSI (14-period Wilder smoothing), MACD (12/26/9), Bollinger Bands (20-period 2σ), and SMA/EMA moving averages.
+- [x] **Quantitative Risk & Monte Carlo Engine**: Built `backend/analytics.py` executing 1,000-iteration Geometric Brownian Motion simulations, Value-at-Risk (VaR 95% and 99%), Expected Shortfall (CVaR), Altman Z-Score, and DuPont ROE analysis.
+- [x] **Python AI Copilot with Search Grounding**: Built `backend/copilot.py` using the official `google-genai` Python SDK targeting `gemini-2.5-flash` with Google Search tools and resilient fallback.
+- [x] **Express Reverse Proxy Bridge**: Configured `server.ts` to automatically route `/api/v1/*` requests to the Python FastAPI backend on port 8000, falling back seamlessly if Python is offline.
+- [x] **Interactive Python Terminal CLI**: Built `cli.py` with Rich terminal formatting for live streaming quotes, fundamentals inspection, Monte Carlo runs, and AI Copilot interaction.
+- [x] **Master Dev Orchestrator**: Built `dev.py` to concurrently spawn both the Python FastAPI server (:8000) and the Vite/Express frontend (:3000) with colored logs and clean signal termination.
+- [x] **Automated Python Pytest Suite**: Extended `tests/` with `test_indicators.py` and `test_analytics.py`, achieving 21/21 passing tests with programmatic execution via `/api/v1/tests/unit`.
 
 ---
 
 ## 🔮 Future Scalability Roadmap
 
-### Phase 6: WebSockets & Server-Sent Events (Upcoming)
-- [ ] Implement `@app.websocket("/api/v1/ws/quotes")` in `server.ts` to replace client-side polling with true server-driven tick streaming.
-- [ ] Implement Redis Pub/Sub for horizontal scaling across multiple Node.js instances.
+### Phase 6: Real-Time WebSockets & Streaming (Upcoming)
+- [ ] Implement `@app.websocket("/api/v1/ws/quotes")` in FastAPI to stream real-time price ticks to connected clients.
+- [ ] Connect Redis Pub/Sub to broadcast price updates across distributed backend instances.
 
-### Phase 7: Advanced Portfolio Simulation (Upcoming)
-- [ ] Add paper-trading order execution simulation with simulated slippage and commission models.
-- [ ] Add portfolio Monte Carlo simulation tab using Web Workers for client-side multi-threaded calculations.
+### Phase 7: Machine Learning & Portfolio Optimization (Upcoming)
+- [ ] Implement Markowitz Modern Portfolio Theory (Efficient Frontier, Sharpe Ratio maximization) in Python (`backend/optimization.py`) using `scipy.optimize`.
+- [ ] Add ARIMA / Prophet time-series price prediction microservice.
 
 ---
 
 ## 🧪 Verification Matrix
 
-| Test Suite | Command | Coverage Target | Status |
+| Test Suite / Component | Command | Target | Status |
 | :--- | :--- | :--- | :--- |
+| **Python Pytest Suite** | `python -m pytest tests/` | 21/21 unit & integration assertions passed | 🟢 **PASS** |
 | **TypeScript Compiler** | `npm run lint` | 0 errors across all TS/TSX files | 🟢 **PASS** |
 | **Production Build** | `npm run build` | <650 kB per chunk, 0 warnings | 🟢 **PASS** |
-| **Python Backend Tests** | `pytest` | 41/41 unit & integration assertions | 🟢 **PASS** |
-| **REST Health Check** | `curl http://localhost:3000/health` | HTTP 200, security headers active | 🟢 **PASS** |
-| **Research In-Memory Cache** | `curl http://localhost:3000/api/v1/research?symbol=NVDA` | `"source": "memory-cache"` | 🟢 **PASS** |
-| **Frontend Production Serving** | `curl -i http://localhost:3000/` | HTTP 200, HTML & chunk assets served | 🟢 **PASS** |
-
+| **Python Terminal CLI** | `python cli.py --quotes` | Formatted Rich matrix with color indicators | 🟢 **PASS** |
+| **Monte Carlo Engine** | `python cli.py --symbol NVDA --monte-carlo` | VaR 95% & 99%, Expected Price, 1,000 paths | 🟢 **PASS** |
+| **Technical Indicators** | `python cli.py --symbol NVDA --indicators` | RSI, MACD, Bollinger Bands output | 🟢 **PASS** |
+| **FastAPI Health Check** | `curl http://localhost:8000/health` | HTTP 200, Python 3.14 + FastAPI capabilities | 🟢 **PASS** |
+| **Express Python Bridge** | `curl http://localhost:3000/health` | HTTP 200, Python delegation active | 🟢 **PASS** |

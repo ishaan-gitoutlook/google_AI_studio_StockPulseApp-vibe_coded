@@ -118,17 +118,60 @@ function getGeminiClient(): GoogleGenAI | null {
 const researchCache = new Map<string, any>();
 
 // -------------------------------------------------------------
+// PYTHON BACKEND DELEGATION (Python-First Architecture)
+// -------------------------------------------------------------
+const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || 'http://127.0.0.1:8000';
+
+async function forwardToPython(req: Request, res: Response): Promise<boolean> {
+  try {
+    const targetUrl = `${PYTHON_BACKEND_URL}${req.originalUrl}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1800);
+
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+    };
+    if (req.headers['content-type']) {
+      headers['Content-Type'] = req.headers['content-type'] as string;
+    }
+
+    const fetchOptions: RequestInit = {
+      method: req.method,
+      headers,
+      signal: controller.signal,
+    };
+    if (req.method !== 'GET' && req.method !== 'HEAD' && req.body && Object.keys(req.body).length > 0) {
+      fetchOptions.body = JSON.stringify(req.body);
+    }
+
+    const pyResponse = await fetch(targetUrl, fetchOptions);
+    clearTimeout(timeout);
+
+    if (pyResponse.ok) {
+      const data = await pyResponse.json();
+      res.setHeader('X-Powered-By-Engine', 'Python-FastAPI');
+      res.status(pyResponse.status).json(data);
+      return true;
+    }
+    return false;
+  } catch {
+    // Python backend not reachable, proceed to local Express handler
+    return false;
+  }
+}
+
+// -------------------------------------------------------------
 // REST API ROUTES
 // -------------------------------------------------------------
 
 // 1. Health Endpoint
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', async (req: Request, res: Response) => {
   const uptimeSeconds = Math.floor((Date.now() - START_TIME) / 1000);
   res.json({
     status: 'ok',
     app: 'StockPulse',
-    version: '1.2.0-enterprise',
-    service: 'Core Financial API & AI Copilot',
+    version: '1.3.0-enterprise',
+    service: 'Core Financial API (Python Delegation Active)',
     uptimeSeconds,
     timestamp: new Date().toISOString(),
     security: {
@@ -139,6 +182,7 @@ app.get('/health', (req: Request, res: Response) => {
       corsPolicy: 'enforced',
     },
     capabilities: {
+      pythonFastAPI: 'supported (port 8000)',
       marketData: 'active',
       geminiCopilot: Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY'),
       playwrightQA: 'active',
@@ -147,8 +191,34 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
+// Dedicated Python Analytics & Quantitative Endpoints
+app.get('/api/v1/analytics/indicators', async (req: Request, res: Response) => {
+  if (await forwardToPython(req, res)) return;
+  res.status(503).json({
+    status: 'offline',
+    message: 'Python Analytics Engine is offline. Start via: python dev.py or uvicorn backend.main:app --port 8000',
+  });
+});
+
+app.get('/api/v1/analytics/monte-carlo', async (req: Request, res: Response) => {
+  if (await forwardToPython(req, res)) return;
+  res.status(503).json({
+    status: 'offline',
+    message: 'Python Analytics Engine is offline. Start via: python dev.py or uvicorn backend.main:app --port 8000',
+  });
+});
+
+app.get('/api/v1/analytics/solvency', async (req: Request, res: Response) => {
+  if (await forwardToPython(req, res)) return;
+  res.status(503).json({
+    status: 'offline',
+    message: 'Python Analytics Engine is offline. Start via: python dev.py or uvicorn backend.main:app --port 8000',
+  });
+});
+
 // 2. Market Universes
-app.get('/api/v1/universes', (req: Request, res: Response) => {
+app.get('/api/v1/universes', async (req: Request, res: Response) => {
+  if (await forwardToPython(req, res)) return;
   res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
   res.json({
     status: 'success',
@@ -158,8 +228,10 @@ app.get('/api/v1/universes', (req: Request, res: Response) => {
 });
 
 // 3. Quotes Endpoint (by universe or symbols list with parameter sanitization)
-app.get('/api/v1/quotes', (req: Request, res: Response) => {
+app.get('/api/v1/quotes', async (req: Request, res: Response) => {
+  if (await forwardToPython(req, res)) return;
   const rawUniverse = req.query.universe as string | undefined;
+
   const universeId = rawUniverse && /^[a-z0-9-]+$/i.test(rawUniverse) ? rawUniverse : 'global-megacaps';
   const symbolsParam = req.query.symbols as string | undefined;
 
@@ -222,8 +294,10 @@ app.get('/api/v1/quotes', (req: Request, res: Response) => {
 });
 
 // 4. Fundamentals Research Endpoint with Input Sanitization & In-Memory Caching
-app.get('/api/v1/research', (req: Request, res: Response) => {
+app.get('/api/v1/research', async (req: Request, res: Response) => {
+  if (await forwardToPython(req, res)) return;
   const rawSymbol = (req.query.symbol as string || 'NVDA').toUpperCase().trim();
+
   const symbol = /^[A-Z0-9.-]{1,12}$/.test(rawSymbol) ? rawSymbol : 'NVDA';
   
   if (STOCK_FUNDAMENTALS[symbol]) {
@@ -294,7 +368,9 @@ app.get('/api/v1/research', (req: Request, res: Response) => {
 
 // 5. AI Financial Copilot Chat Endpoint (Gemini + Prompt Fencing + Validation)
 app.post('/api/v1/chat', async (req: Request, res: Response) => {
+  if (await forwardToPython(req, res)) return;
   const startTime = Date.now();
+
   const { message, universe = 'global-megacaps', activeStock } = req.body;
 
   if (!message || typeof message !== 'string' || message.trim() === '') {
@@ -503,8 +579,10 @@ You can ask me to:
 });
 
 // 6. QA Test Suite Endpoints with Client Caching Headers
-app.get('/api/v1/tests/unit', (req: Request, res: Response) => {
+app.get('/api/v1/tests/unit', async (req: Request, res: Response) => {
+  if (await forwardToPython(req, res)) return;
   res.setHeader('Cache-Control', 'public, max-age=120');
+
   res.json({
     status: 'success',
     totalTests: UNIT_TESTS_DATA.length,

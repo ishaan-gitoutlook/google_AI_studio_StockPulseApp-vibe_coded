@@ -5,11 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
+    "dev:python": "python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload",
+    "dev:all": "python dev.py",
+    "test:python": "python -m pytest tests/",
+    "cli": "python cli.py",
+    "benchmark": "python scripts/benchmark.py",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=esm --packages=external --sourcemap --outfile=dist/server.mjs",
     "start": "node dist/server.mjs",
     "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true}); try{fs.unlinkSync('server.js')}catch(e){}\"",
     "lint": "tsc --noEmit"
   },
+
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
